@@ -31,7 +31,7 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const backendUrl = `https://${window.location.hostname.replace('-00-', '-8000-00-')}/api/run-test`;
+      const backendUrl = `${window.location.protocol}//${window.location.hostname}:8000/api/run-test`;
       const response = await fetch(backendUrl);
       const data = await response.json();
 
