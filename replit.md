@@ -9,11 +9,13 @@ Optaimi Pulse is a Next.js 15 dashboard application for real-time performance an
 - Created main dashboard at `app/page.tsx` with Optaimi Pulse branding
 - Removed legacy `pages/` directory to resolve routing conflicts
 - Configured development server to run on port 5000
-- Added interactive "Run Test" button with simulated API testing (2-second delay)
+- Added interactive "Run Test" button with backend API integration
 - Displays 8 LLM models: gpt-5, gpt-5-mini, gpt-4o, gpt-realtime, Claude Sonnet 4.5, Claude Haiku 3.5, Gemini 2.5 Pro, DeepSeek-V3.2-Exp
 - **Tailwind CSS v4 Migration**: Updated configuration to use Tailwind v4 with @import "tailwindcss", @theme directive for token mapping, and proper CSS variable handling
 - Fixed styling issues by correctly mapping CSS variables to Tailwind tokens using @theme inline
 - Updated next.config.ts to safely handle REPLIT_DOMAINS environment variable
+- **Python FastAPI Backend**: Added FastAPI server on port 8000 with /api/run-test endpoint providing real LLM performance data
+- Configured parallel workflows for Frontend (Next.js on port 5000) and Backend (FastAPI on port 8000)
 - Cleaned up unused workflows and files
 
 ## User Preferences
@@ -55,7 +57,7 @@ Preferred communication style: Simple, everyday language.
 **Page Structure**
 - **Single Page Application**: Main functionality contained in `app/page.tsx`
 - **Model Results Display**: Displays 8 AI models with performance metrics in card format
-- **Mock Data**: Currently uses simulated data with setTimeout (2 second delay) for demonstration
+- **API Integration**: Fetches real data from FastAPI backend when "Run Test" button is clicked
 
 ### Build and Development Configuration
 
@@ -72,6 +74,28 @@ Preferred communication style: Simple, everyday language.
 **Build System**
 - **Next.js Built-in**: Uses Next.js internal webpack/turbopack bundling
 - **No Custom Webpack Config**: Relies on Next.js defaults for optimal performance
+
+### Backend Architecture
+
+**Framework Choice: FastAPI (Python)**
+- **Rationale**: Lightweight, fast, and modern Python web framework for building APIs
+- **CORS Middleware**: Configured to allow all origins, methods, and headers for development
+- **Type Safety**: Uses Pydantic for request/response validation (implicit through FastAPI)
+
+**API Endpoints**
+- **GET /api/run-test**: Returns performance metrics for 8 LLM models
+  - Response format: `{"results": [{"name": str, "latency": str, "tps": str, "cost": str}, ...]}`
+  - Mock data includes: gpt-5, gpt-5-mini, gpt-4o, gpt-realtime, Claude Sonnet 4.5, Claude Haiku 3.5, Gemini 2.5 Pro, DeepSeek-V3.2-Exp
+
+**Server Configuration**
+- **Host**: 0.0.0.0 (accessible from all network interfaces)
+- **Port**: 8000 (mapped to external port 8000 in Replit)
+- **ASGI Server**: Uvicorn with standard extras for WebSocket and HTTP/2 support
+
+**Frontend-Backend Communication**
+- **URL Construction**: Frontend uses `${window.location.protocol}//${window.location.hostname}:8000/api/run-test`
+- **Port Mapping**: Replit exposes both port 5000 (frontend/webview) and port 8000 (backend API)
+- **Cross-Origin**: CORS enabled on backend allows requests from frontend domain
 
 ### External Dependencies
 
@@ -101,17 +125,26 @@ Preferred communication style: Simple, everyday language.
 - **@types/react**: ^19.0.12 - React type definitions
 - **@types/react-dom**: ^19.0.4 - React DOM type definitions
 
+**Backend Dependencies (Python)**
+- **fastapi**: ^0.118.0 - Modern Python web framework for building APIs
+- **uvicorn[standard]**: ^0.37.0 - ASGI server with WebSocket and HTTP/2 support
+- **pydantic**: ^2.11.10 (dependency of FastAPI) - Data validation using Python type annotations
+
 **Platform Integration**
 - **Replit Environment**: Configured for Replit hosting with appropriate domain and port settings
-- **Development Workflow**: Server workflow runs on port 5000 with `npm run dev`
+- **Parallel Workflows**: 
+  - Frontend: Next.js dev server on port 5000 (webview output)
+  - Backend: FastAPI/Uvicorn server on port 8000 (console output)
+- **Port Configuration**: `.replit` file maps localPort 5000→externalPort 80 and localPort 8000→externalPort 8000
 - **No Database**: Currently no persistent storage or database integration
-- **No API Integrations**: Mock data only; no actual AI model API calls implemented yet (simulated with 2-second setTimeout)
+- **Mock Backend Data**: FastAPI endpoint returns simulated LLM performance metrics
 
 ### Future Extensibility Considerations
 
 The application is structured to easily add:
-- Real API integrations with AI model providers
-- Backend API routes in `pages/api/` or `app/api/` for server-side processing
-- Database integration (would likely use Drizzle ORM based on common patterns)
-- Authentication system for user-specific testing
-- Result persistence and historical comparison features
+- Real API integrations with AI model providers (replacing mock backend data)
+- Additional backend endpoints for specific model testing or benchmarking
+- Database integration for result persistence (would likely use PostgreSQL with Drizzle ORM)
+- Authentication system for user-specific testing and result tracking
+- Historical comparison features and trend analysis
+- Caching layer for API responses (Redis or in-memory caching)
