@@ -11,6 +11,10 @@ Optaimi Pulse is a Next.js 15 dashboard application for real-time performance an
 - Configured development server to run on port 5000
 - Added interactive "Run Test" button with simulated API testing (2-second delay)
 - Displays 8 LLM models: gpt-5, gpt-5-mini, gpt-4o, gpt-realtime, Claude Sonnet 4.5, Claude Haiku 3.5, Gemini 2.5 Pro, DeepSeek-V3.2-Exp
+- **Tailwind CSS v4 Migration**: Updated configuration to use Tailwind v4 with @import "tailwindcss", @theme directive for token mapping, and proper CSS variable handling
+- Fixed styling issues by correctly mapping CSS variables to Tailwind tokens using @theme inline
+- Updated next.config.ts to safely handle REPLIT_DOMAINS environment variable
+- Cleaned up unused workflows and files
 
 ## User Preferences
 
