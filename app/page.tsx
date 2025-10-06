@@ -6,71 +6,83 @@ import { Button } from "@/components/ui/button"
 import { Zap, ChevronsRight, Loader } from "lucide-react"
 
 interface ModelResult {
-  model: string
-  subtitle: string
+  name: string
   latency: string
-  tokensPerSec: string
-  costPerMtok: string
+  tps: string
+  cost: string
 }
+
+const initialResults: ModelResult[] = [
+    { name: 'gpt-5', latency: '---', tps: '---', cost: '---' },
+    { name: 'gpt-5-mini', latency: '---', tps: '---', cost: '---' },
+    { name: 'gpt-4o', latency: '---', tps: '---', cost: '---' },
+    { name: 'gpt-realtime', latency: '---', tps: '---', cost: '---' },
+    { name: 'Claude Sonnet 4.5', latency: '---', tps: '---', cost: '---' },
+    { name: 'Claude Haiku 3.5', latency: '---', tps: '---', cost: '---' },
+    { name: 'Gemini 2.5 Pro', latency: '---', tps: '---', cost: '---' },
+    { name: 'DeepSeek-V3.2-Exp', latency: '---', tps: '---', cost: '---' },
+]
 
 export default function Home() {
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<ModelResult[]>([
-    { model: "gpt-5", subtitle: "Flagship", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "gpt-5-mini", subtitle: "Cost-Effective", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "gpt-4o", subtitle: "Previous Flagship", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "gpt-realtime", subtitle: "Speed-Focused", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "Claude Sonnet 4.5", subtitle: "", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "Claude Haiku 3.5", subtitle: "", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "Gemini 2.5 Pro", subtitle: "", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-    { model: "DeepSeek-V3.2-Exp", subtitle: "", latency: "---", tokensPerSec: "---", costPerMtok: "---" },
-  ])
+  const [results, setResults] = useState(initialResults)
 
   const handleRunTest = async () => {
     setLoading(true)
-    
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setResults([
-      { model: "gpt-5", subtitle: "Flagship", latency: "245ms", tokensPerSec: "142", costPerMtok: "$15.00" },
-      { model: "gpt-5-mini", subtitle: "Cost-Effective", latency: "189ms", tokensPerSec: "178", costPerMtok: "$0.60" },
-      { model: "gpt-4o", subtitle: "Previous Flagship", latency: "312ms", tokensPerSec: "98", costPerMtok: "$10.00" },
-      { model: "gpt-realtime", subtitle: "Speed-Focused", latency: "98ms", tokensPerSec: "245", costPerMtok: "$8.50" },
-      { model: "Claude Sonnet 4.5", subtitle: "", latency: "267ms", tokensPerSec: "125", costPerMtok: "$12.00" },
-      { model: "Claude Haiku 3.5", subtitle: "", latency: "156ms", tokensPerSec: "198", costPerMtok: "$0.80" },
-      { model: "Gemini 2.5 Pro", subtitle: "", latency: "289ms", tokensPerSec: "115", costPerMtok: "$7.50" },
-      { model: "DeepSeek-V3.2-Exp", subtitle: "", latency: "198ms", tokensPerSec: "165", costPerMtok: "$0.30" },
-    ])
-    
-    setLoading(false)
+
+    try {
+      // The URL for your backend server running on port 8000
+      const response = await fetch('http://localhost:8000/api/run-test');
+      const data = await response.json();
+
+      // We need to map the backend data keys to our frontend component state keys
+      const formattedResults = data.results.map((result: any) => ({
+        name: result.name, // Keep name as is
+        latency: result.latency,
+        tps: result.tps,
+        cost: result.cost,
+      }));
+
+      setResults(formattedResults);
+
+    } catch (error) {
+      console.error("Failed to fetch test results:", error);
+      // Optional: Add logic to show an error state in the UI
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <Card className="w-full max-w-4xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Zap className="size-6" />
-            Optaimi Pulse
-          </CardTitle>
-          <CardDescription>
-            Real-time performance and cost analysis of leading LLMs.
-          </CardDescription>
-          <CardAction>
-            <Button variant="outline" onClick={handleRunTest} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader className="animate-spin" />
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <ChevronsRight />
-                  Run Test
-                </>
-              )}
-            </Button>
-          </CardAction>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Zap className="size-6" />
+                Optaimi Pulse
+              </CardTitle>
+              <CardDescription>
+                Real-time performance and cost analysis of leading LLMs.
+              </CardDescription>
+            </div>
+            <CardAction>
+              <Button variant="outline" onClick={handleRunTest} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader className="animate-spin mr-2" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <ChevronsRight className="mr-2" />
+                    Run Test
+                  </>
+                )}
+              </Button>
+            </CardAction>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -88,15 +100,12 @@ export default function Home() {
                   <tr key={index} className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex flex-col">
-                        <span className="font-medium">{result.model}</span>
-                        {result.subtitle && (
-                          <span className="text-xs text-muted-foreground">{result.subtitle}</span>
-                        )}
+                        <span className="font-medium">{result.name}</span>
                       </div>
                     </td>
                     <td className="text-right py-3 px-4 tabular-nums">{result.latency}</td>
-                    <td className="text-right py-3 px-4 tabular-nums">{result.tokensPerSec}</td>
-                    <td className="text-right py-3 px-4 tabular-nums">{result.costPerMtok}</td>
+                    <td className="text-right py-3 px-4 tabular-nums">{result.tps}</td>
+                    <td className="text-right py-3 px-4 tabular-nums">{result.cost}</td>
                   </tr>
                 ))}
               </tbody>
