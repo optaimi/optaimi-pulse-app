@@ -1,5 +1,5 @@
 hidden = [".config", "package-lock.json", ".next", ".swc"]
-modules = ["nodejs-22", "python-3.11"]
+modules = ["nodejs-22", "python-3.11", "postgresql-16", "python3"]
 
 [nix]
 channel = "stable-24_11"
