@@ -22,6 +22,10 @@ externalPort = 80
 localPort = 8000
 externalPort = 8000
 
+[[ports]]
+localPort = 35245
+externalPort = 3001
+
 [workflows]
 runButton = "Project"
 
@@ -29,9 +33,14 @@ runButton = "Project"
 name = "Project"
 mode = "parallel"
 author = "agent"
-  [[workflows.workflow.tasks]]
-  task = "workflow.run"
-  args = "Frontend"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend"
 
 [[workflows.workflow]]
 name = "Frontend"
@@ -42,3 +51,15 @@ author = "agent"
   waitForPort = 5000
   [workflows.workflow.metadata]
   outputType = "webview"
+
+[[workflows.workflow]]
+name = "Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
