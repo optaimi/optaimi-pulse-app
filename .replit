@@ -65,4 +65,5 @@ waitForPort = 8000
 outputType = "console"
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "scheduled"
+run = ["python", "scheduler.py"]

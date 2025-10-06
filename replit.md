@@ -5,18 +5,18 @@
 Optaimi Pulse is a Next.js 15 dashboard application for real-time performance and cost analysis of leading LLMs. The application displays performance metrics including latency, tokens per second, and cost per million tokens for 8 AI models from different providers (OpenAI, Anthropic, Google, DeepSeek). Built with Next.js 15 App Router, React 19, TypeScript, and Tailwind CSS 4, it features a modern, responsive UI using Radix UI components.
 
 ## Recent Changes (October 6, 2025)
-- Migrated from Pages Router to App Router architecture
-- Created main dashboard at `app/page.tsx` with Optaimi Pulse branding
-- Removed legacy `pages/` directory to resolve routing conflicts
-- Configured development server to run on port 5000
-- Added interactive "Run Test" button with backend API integration
-- Displays 8 LLM models: gpt-5, gpt-5-mini, gpt-4o, gpt-realtime, Claude Sonnet 4.5, Claude Haiku 3.5, Gemini 2.5 Pro, DeepSeek-V3.2-Exp
-- **Tailwind CSS v4 Migration**: Updated configuration to use Tailwind v4 with @import "tailwindcss", @theme directive for token mapping, and proper CSS variable handling
-- Fixed styling issues by correctly mapping CSS variables to Tailwind tokens using @theme inline
-- Updated next.config.ts to safely handle REPLIT_DOMAINS environment variable
-- **Python FastAPI Backend**: Added FastAPI server on port 8000 with /api/run-test endpoint providing real LLM performance data
-- Configured parallel workflows for Frontend (Next.js on port 5000) and Backend (FastAPI on port 8000)
-- Cleaned up unused workflows and files
+
+### Phase 1-2 Implementation Complete ✅
+- **Live Concurrent API Calls**: Real-time testing of 4 LLM models (gpt-4o-mini, claude-3-5-haiku-20241022, gemini-2.0-flash-exp, deepseek-chat)
+- **PostgreSQL Persistence**: Database table `results` storing test history with timestamps, latency, TPS, cost, and error tracking
+- **Historical Charts**: Performance visualization with Recharts showing latency and tokens/sec trends over time
+- **Time-Range Toggle**: 24h/7d/30d filtering for historical data analysis
+- **Metric Summary Tiles**: Real-time calculation and display of average latency, average TPS, and average cost
+- **Full-Stack Integration**: Next.js API routes proxying to FastAPI backend with proper error handling
+- **Component Architecture**: PerformanceChart moved to design-system/components/ for proper path resolution
+- **Google GenAI Fix**: Corrected import from `from google import genai` to `import google.generativeai as genai`
+- **Scheduled Deployment**: scheduler.py configured for automated 15-minute testing intervals
+- **Design System**: Emerald accent colors (#10b981), Inter font, tabular-nums for metrics, large rounded cards
 
 ## User Preferences
 
@@ -83,9 +83,13 @@ Preferred communication style: Simple, everyday language.
 - **Type Safety**: Uses Pydantic for request/response validation (implicit through FastAPI)
 
 **API Endpoints**
-- **GET /api/run-test**: Returns performance metrics for 8 LLM models
-  - Response format: `{"results": [{"name": str, "latency": str, "tps": str, "cost": str}, ...]}`
-  - Mock data includes: gpt-5, gpt-5-mini, gpt-4o, gpt-realtime, Claude Sonnet 4.5, Claude Haiku 3.5, Gemini 2.5 Pro, DeepSeek-V3.2-Exp
+- **GET /api/run-test**: Executes concurrent tests on 4 LLM models and returns performance metrics
+  - Tests: gpt-4o-mini, claude-3-5-haiku-20241022, gemini-2.0-flash-exp, deepseek-chat
+  - Response format: `{"results": [{"model": str, "provider": str, "display_name": str, "latency_s": float, "tps": float, "cost_usd": float, "in_tokens": int, "out_tokens": int, "error": str|null}, ...]}`
+  - Stores results in PostgreSQL `results` table for historical tracking
+- **GET /api/history**: Returns historical test results with time-range filtering
+  - Query params: `model` (optional), `range` (24h/7d/30d)
+  - Response format: `{"history": [{"ts": str, "provider": str, "model": str, "latency_s": float, "tps": float, "cost_usd": float, ...}], "range": str, "model": str|null}`
 
 **Server Configuration**
 - **Host**: 0.0.0.0 (accessible from all network interfaces)
@@ -109,7 +113,8 @@ Preferred communication style: Simple, everyday language.
 - **@radix-ui/react-label**: ^2.1.7 - Accessible label components
 - **@radix-ui/react-slider**: ^1.3.6 - Accessible slider/range input
 - **@radix-ui/react-slot**: ^1.2.3 - Component composition utility
-- **lucide-react**: ^0.544.0 - Icon library (Zap, ChevronsRight, Loader icons used)
+- **lucide-react**: ^0.544.0 - Icon library (Zap, RefreshCw, TrendingUp, DollarSign, Gauge icons used)
+- **recharts**: ^3.2.1 - Composable charting library for React (LineChart for performance history)
 
 **Styling Dependencies**
 - **tailwindcss**: ^4.0.15 - Utility-first CSS framework
@@ -129,15 +134,33 @@ Preferred communication style: Simple, everyday language.
 - **fastapi**: ^0.118.0 - Modern Python web framework for building APIs
 - **uvicorn[standard]**: ^0.37.0 - ASGI server with WebSocket and HTTP/2 support
 - **pydantic**: ^2.11.10 (dependency of FastAPI) - Data validation using Python type annotations
+- **psycopg2-binary**: ^2.9.x - PostgreSQL database adapter for Python
+- **openai**: Latest - OpenAI API client for GPT-4o Mini testing
+- **anthropic**: Latest - Anthropic API client for Claude 3.5 Haiku testing
+- **google-generativeai**: Latest - Google GenAI API client for Gemini 2.0 Flash testing
+- **httpx**: Latest - HTTP client for DeepSeek API calls
+
+**Database Schema**
+- **Table: results** - Stores LLM test results with the following columns:
+  - `id`: serial primary key (auto-incrementing)
+  - `ts`: timestamp with time zone (defaults to CURRENT_TIMESTAMP)
+  - `provider`: varchar (model provider: OpenAI, Anthropic, Google, DeepSeek)
+  - `model`: varchar (model identifier: gpt-4o-mini, claude-3-5-haiku-20241022, etc.)
+  - `latency_s`: numeric (test latency in seconds)
+  - `tps`: numeric (tokens per second)
+  - `cost_usd`: numeric (cost in USD)
+  - `in_tokens`: integer (input token count)
+  - `out_tokens`: integer (output token count)
+  - `error`: text (error message if test failed, null if successful)
 
 **Platform Integration**
 - **Replit Environment**: Configured for Replit hosting with appropriate domain and port settings
 - **Parallel Workflows**: 
   - Frontend: Next.js dev server on port 5000 (webview output)
   - Backend: FastAPI/Uvicorn server on port 8000 (console output)
-- **Port Configuration**: `.replit` file maps localPort 5000→externalPort 80 and localPort 8000→externalPort 8000
-- **No Database**: Currently no persistent storage or database integration
-- **Mock Backend Data**: FastAPI endpoint returns simulated LLM performance metrics
+- **Port Configuration**: Replit exposes both port 5000 (frontend) and port 8000 (backend API)
+- **PostgreSQL Database**: Replit PostgreSQL database configured with environment variables (DATABASE_URL, PGHOST, PGDATABASE, PGUSER, PGPASSWORD, PGPORT)
+- **Real LLM Testing**: Backend makes actual API calls to OpenAI, Anthropic, Google GenAI, and DeepSeek providers with results persisted to database
 
 ### Future Extensibility Considerations
 

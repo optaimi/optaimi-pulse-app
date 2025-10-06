@@ -12,7 +12,7 @@ import uvicorn
 
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
-from google import genai
+import google.generativeai as genai
 import httpx
 
 app = FastAPI()
@@ -28,7 +28,7 @@ app.add_middleware(
 # Initialize API clients
 openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 anthropic_client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # Pricing table: cost per 1M tokens (input, output)
 # Source: provider pricing pages as of Oct 2025
@@ -175,13 +175,14 @@ async def test_gemini(model: str = "gemini-2.0-flash-exp") -> Dict[str, Any]:
     try:
         start = time.time()
         
-        # The newest Gemini model series is "gemini-2.5-flash" or "gemini-2.5-pro"
-        # However for cost testing we use gemini-2.0-flash-exp as specified
+        # Create model instance
+        gemini_model = genai.GenerativeModel(model)
+        
+        # Generate content with specified parameters
         response = await asyncio.to_thread(
-            gemini_client.models.generate_content,
-            model=model,
-            contents=TEST_PROMPT,
-            config=genai.types.GenerateContentConfig(
+            gemini_model.generate_content,
+            TEST_PROMPT,
+            generation_config=genai.types.GenerationConfig(
                 temperature=TEMPERATURE,
                 max_output_tokens=MAX_TOKENS,
             )
@@ -191,9 +192,12 @@ async def test_gemini(model: str = "gemini-2.0-flash-exp") -> Dict[str, Any]:
         
         # Extract token counts from usage metadata
         in_tokens = response.usage_metadata.prompt_token_count if response.usage_metadata else 0
-        out_tokens = response.usage_metadata.candidates_token_count if response.usage_metadata else 0
         
-        tps = out_tokens / latency if latency > 0 else 0
+        # candidates_token_count can be a list or int, handle both cases
+        candidates_count = response.usage_metadata.candidates_token_count if response.usage_metadata else 0
+        out_tokens = candidates_count[0] if isinstance(candidates_count, list) and len(candidates_count) > 0 else (candidates_count if isinstance(candidates_count, int) else 0)
+        
+        tps = out_tokens / latency if latency > 0 and out_tokens else 0
         cost = calc_cost(model, in_tokens, out_tokens)
         
         return {
