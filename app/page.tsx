@@ -31,13 +31,12 @@ export default function Home() {
     setLoading(true)
 
     try {
-      // The URL for your backend server running on port 8000
-      const response = await fetch('http://localhost:8000/api/run-test');
+      const backendUrl = `https://${window.location.hostname.replace('-00-', '-8000-00-')}/api/run-test`;
+      const response = await fetch(backendUrl);
       const data = await response.json();
 
-      // We need to map the backend data keys to our frontend component state keys
       const formattedResults = data.results.map((result: any) => ({
-        name: result.name, // Keep name as is
+        name: result.name,
         latency: result.latency,
         tps: result.tps,
         cost: result.cost,
@@ -47,7 +46,6 @@ export default function Home() {
 
     } catch (error) {
       console.error("Failed to fetch test results:", error);
-      // Optional: Add logic to show an error state in the UI
     } finally {
       setLoading(false)
     }
