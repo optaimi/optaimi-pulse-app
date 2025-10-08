@@ -41,7 +41,7 @@ function SignInForm() {
         return
       }
 
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } catch (err) {
       setError('Failed to sign in. Please try again.')

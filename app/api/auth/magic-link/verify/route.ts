@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
       path: '/',
     })
 
-    // Redirect to home
-    return NextResponse.redirect(new URL('/', request.url))
+    // Redirect to dashboard
+    return NextResponse.redirect(new URL('/dashboard', request.url))
 
   } catch (error) {
     console.error('Magic link verification error:', error)
