@@ -373,6 +373,261 @@
 
 ---
 
+## Session Changelog (October 8, 2025 - Continued)
+
+### Phase 4: SaaS Transformation - Authentication, Alerts, and Email Notifications ✅
+
+#### 1. NextAuth Authentication System
+
+##### Database Schema Extensions
+- **Extended Drizzle Schema** (`shared/schema.ts`):
+  - **`users` table**: Core user data with email, name, email verification status
+  - **`accounts` table**: OAuth provider accounts (supports magic link and email/password)
+  - **`sessions` table**: User sessions with expiry tracking
+  - **`verification_tokens` table**: Magic link tokens for passwordless authentication
+  - **Relations**: Proper foreign key relationships between users, accounts, sessions
+
+##### Authentication Adapter
+- **Created `server/auth-adapter.ts`**:
+  - Custom DrizzleAdapter implementation for NextAuth
+  - Bridges NextAuth with PostgreSQL via Drizzle ORM
+  - Handles user creation, session management, verification tokens
+  - Full TypeScript type safety with proper table schema mapping
+
+##### NextAuth Configuration
+- **API Route**: `app/api/auth/[...nextauth]/route.ts`
+  - **Providers Configured**:
+    - **Email Provider**: Magic link authentication (passwordless sign-in)
+    - **Credentials Provider**: Email/password authentication with bcrypt hashing
+  - **Session Strategy**: Database sessions with 30-day expiry
+  - **Callbacks**: 
+    - `jwt()`: Attaches user.id to JWT tokens
+    - `session()`: Includes user.id in session objects for alert ownership
+  - **Email Configuration**: Brevo SMTP integration for magic link delivery
+    - From: pulse@optaimi.com
+    - Subject: "Sign in to Optaimi Pulse"
+    - HTML + Text email templates
+
+##### TypeScript Type Extensions
+- **Created `types/next-auth.d.ts`**:
+  - Extended NextAuth default types to include `user.id` in sessions
+  - Ensures TypeScript knows about custom session properties
+  - Critical for alert ownership and protected routes
+
+##### Sign-In Page
+- **Created `app/signin/page.tsx`**:
+  - Tabbed interface for Email/Password vs Magic Link sign-in
+  - Email/Password tab: Standard sign-in form with error handling
+  - Magic Link tab: Email input with "Send Magic Link" button
+  - Auto-redirects authenticated users to dashboard
+  - Error state management with user-friendly messages
+  - Radix UI Tabs component for smooth UX
+
+#### 2. Alert System Implementation
+
+##### Database Schema
+- **`alerts` table** (`shared/schema.ts`):
+  - Columns: id, user_id (FK to users), type, model, threshold, window, cadence, active, created_at
+  - **Alert Types**: 
+    - `latency` - Triggers when latency exceeds threshold
+    - `tps_drop` - Triggers when TPS drops below threshold
+    - `cost_mtok` - Triggers when cost per million tokens exceeds threshold
+    - `error` - Triggers on any model error
+    - `digest` - Daily summary of all model performance
+  - **Cadence Options**: 5m, 15m, 30m, 1h, 2h, 4h, 8h, 12h, 24h
+  - **Window Options**: 5m, 15m, 30m, 1h, 6h, 12h, 24h (lookback period for evaluation)
+
+- **`email_events` table** (`shared/schema.ts`):
+  - Tracks sent emails for deduplication
+  - Columns: id, alert_id (FK), user_id (FK), sent_at, event_type
+  - Prevents duplicate alert emails within cadence period
+
+- **`user_settings` table** (`shared/schema.ts`):
+  - User preferences including quiet hours
+  - Columns: user_id (PK, FK), quiet_hours_start, quiet_hours_end, timezone
+  - Default timezone: UTC
+  - Quiet hours prevent alert emails during specified time range
+
+##### Storage Layer
+- **Created `server/storage.ts`**:
+  - **Alert CRUD Operations**:
+    - `createAlert()`: Creates alert with user_id ownership
+    - `getAlertsByUserId()`: Fetches all alerts for a user
+    - `updateAlert()`: Updates alert configuration (requires ownership check)
+    - `deleteAlert()`: Deletes alert (requires ownership check)
+    - `getActiveAlerts()`: Fetches all active alerts for scheduler
+  - **Email Event Tracking**:
+    - `getRecentEmailEvents()`: Checks if email sent within cadence window
+    - `recordEmailEvent()`: Logs email send event for deduplication
+  - **User Settings**:
+    - `getUserSettings()`: Retrieves user preferences (creates defaults if missing)
+    - `updateUserSettings()`: Updates quiet hours and timezone preferences
+  - **PostgreSQL Connection**: Uses DATABASE_URL environment variable
+  - **Error Handling**: Comprehensive try-catch with console error logging
+
+##### Next.js API Routes
+- **POST/GET `/api/alerts`** (`app/api/alerts/route.ts`):
+  - **POST**: Creates or updates alert (requires authentication)
+    - Validates session with `getServerSession()`
+    - Enforces user_id ownership
+    - Returns created/updated alert object
+  - **GET**: Lists all alerts for authenticated user
+    - Filters by session.user.id automatically
+    - Returns array of alert configurations
+  - **Security**: All routes protected with NextAuth session checks
+
+- **POST `/api/alerts/test`** (`app/api/alerts/test/route.ts`):
+  - Dry-run evaluation of alert configuration before creation
+  - Proxies to FastAPI backend `/api/alerts/test`
+  - Requires authentication
+  - Returns evaluation result with triggered status and metrics
+
+##### Frontend Alert Management
+- **Protected Route**: `app/alerts/page.tsx`
+  - Session check with redirect to `/signin` if unauthenticated
+  - **Alert List View**:
+    - Displays all user's alerts in card format
+    - Shows alert type, model (if specified), threshold, cadence, active status
+    - Edit and Delete buttons per alert
+    - Empty state message for users with no alerts
+  - **Create Alert Button**: Opens modal dialog for new alert creation
+  - **Real-time Updates**: Refreshes list after create/edit/delete operations
+
+- **Alert Form Modal**: `app/alerts/alert-form.tsx`
+  - **5 Alert Type Support**:
+    - Latency: Threshold in seconds
+    - TPS Drop: Threshold in tokens/sec
+    - Cost per Mtok: Threshold in currency (USD/GBP)
+    - Error: No threshold (triggers on any error)
+    - Digest: No threshold (daily summary)
+  - **Model Selection**: Dropdown with 4 available models or "All Models"
+  - **Window Selection**: 5m to 24h lookback period
+  - **Cadence Selection**: 5m to 24h notification frequency
+  - **Active Toggle**: Enable/disable alert without deletion
+  - **Test Alert Button**: Dry-run evaluation using `/api/alerts/test`
+    - Shows current metrics and whether alert would trigger
+    - Helps users validate configuration before saving
+  - **Validation**: Client-side validation for required fields
+
+#### 3. Email Notification System
+
+##### Brevo Integration
+- **Created `server/email.ts`**:
+  - **SMTP Configuration**:
+    - API Key: Uses `BREVO_API_KEY` environment variable
+    - Sender: pulse@optaimi.com
+    - Brevo SDK: `sib-api-v3-sdk` for transactional emails
+  - **Email Templates**:
+    - `sendAlertEmail()`: Alert notification with metrics
+      - Subject: "[Alert] {type} - {model}" 
+      - Body: Metric details, threshold comparison, timestamp
+      - HTML formatted with proper styling
+    - `sendDigestEmail()`: Daily performance summary
+      - Subject: "Daily Digest: LLM Performance Summary"
+      - Body: Aggregated metrics for all models, trends, errors
+      - HTML table format for easy reading
+  - **Error Handling**: Catches and logs email send failures without breaking scheduler
+
+#### 4. Alert Scheduler System
+
+##### Scheduler Implementation
+- **Created `alert_scheduler.py`**:
+  - **CRON Authentication**: 
+    - Requires `--cron <token>` CLI argument
+    - Validates against `CRON_TOKEN` environment variable
+    - Returns 401 if token invalid or missing
+  - **Execution Interval**: Runs every 5 minutes via Scheduled Deployment
+  - **Alert Evaluation Logic**:
+    - Fetches all active alerts from database
+    - Queries PostgreSQL for historical metrics within alert window
+    - **Latency Alerts**: Triggers if avg latency > threshold
+    - **TPS Drop Alerts**: Triggers if avg TPS < threshold
+    - **Cost Alerts**: Triggers if avg cost per Mtok > threshold
+    - **Error Alerts**: Triggers if any errors in window
+    - **Digest Alerts**: Generates daily summary of all metrics
+  - **Cadence Enforcement**:
+    - Checks `email_events` table for recent sends
+    - Respects alert cadence (5m-24h) to prevent spam
+    - Only sends email if cadence period elapsed
+  - **Quiet Hours Support**:
+    - Fetches user settings from `user_settings` table
+    - Checks if current time falls within quiet hours
+    - Skips email send during quiet hours (queues for later)
+    - Timezone-aware using pytz library
+  - **Email Deduplication**:
+    - Records email event in `email_events` table after send
+    - Prevents duplicate alerts within cadence window
+    - Per-alert tracking (not global)
+  - **Error Recovery**: Continues processing remaining alerts if one fails
+
+##### FastAPI Alert Test Endpoint
+- **POST `/api/alerts/test`** (`main.py`):
+  - Accepts alert configuration: `{type, model?, threshold?, window}`
+  - Queries historical data from PostgreSQL
+  - Evaluates alert logic (same as scheduler)
+  - Returns: `{triggered: bool, metrics: {...}, message: str}`
+  - Used by frontend for real-time alert testing
+
+#### 5. Deployment Architecture
+
+##### Autoscale Deployment (Main Application)
+- **Configuration**:
+  - **Deployment Type**: Autoscale (auto-scaling web service)
+  - **Build Command**: `npm run build`
+  - **Run Command**: `uvicorn main:app --host 0.0.0.0 --port 8000 & npm run start -- --port 5000 & wait`
+  - **Port Configuration**:
+    - Port 8000: FastAPI backend (internal only, not exposed)
+    - Port 5000: Next.js frontend (externally accessible)
+  - **Architecture**: Both services run in same container
+    - Frontend proxies all backend requests via Next.js API routes
+    - Backend accessible at `localhost:8000` from Next.js
+    - Single container for simplified deployment
+
+##### Scheduled Deployment (Alert Scheduler)
+- **Configuration**:
+  - **Deployment Type**: Scheduled (cron job)
+  - **Run Command**: `python alert_scheduler.py --cron $CRON_TOKEN`
+  - **Schedule**: Every 5 minutes
+  - **Purpose**: Continuous alert evaluation and email delivery
+  - **Authentication**: Uses CRON_TOKEN for security
+
+##### API Proxy Architecture
+- **Design Rationale**: All backend calls proxied through Next.js
+  - Simplifies deployment (only one external port)
+  - Enables session authentication at API layer
+  - Allows backend to remain internal
+- **Proxy Routes**:
+  - `/api/run-test` → `http://localhost:8000/api/run-test`
+  - `/api/history` → `http://localhost:8000/api/history`
+  - `/api/alerts/test` → `http://localhost:8000/api/alerts/test`
+- **Benefits**:
+  - Session-based authentication on all proxied routes
+  - Backend doesn't need to handle CORS
+  - Unified error handling
+
+##### Environment Secrets
+- **Required Secrets**:
+  - `APP_BASE_URL`: Public URL for magic link generation
+  - `AUTH_SECRET`: NextAuth JWT signing secret
+  - `BREVO_API_KEY`: Email service API key
+  - `CRON_TOKEN`: Scheduler authentication token
+  - `DATABASE_URL`: PostgreSQL connection string (auto-configured)
+  - LLM API keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY
+
+#### 6. Critical Bug Fixes
+
+##### Bug #1: Alert Test Direct Backend Call ❌→✅
+- **Issue**: `app/alerts/alert-form.tsx` called `http://localhost:8000/api/alerts/test` directly
+- **Impact**: Would fail in Autoscale deployment (backend not externally accessible)
+- **Fix**:
+  - Created Next.js proxy route `/api/alerts/test`
+  - Updated frontend to call `/api/alerts/test` instead of direct backend
+  - Added session authentication to proxy route
+- **Location**: `app/api/alerts/test/route.ts`, `app/alerts/alert-form.tsx` line 76
+- **Result**: Alert testing now works correctly in production deployment
+
+---
+
 ## Current System Status
 
 ### ✅ Fully Operational Features
