@@ -190,6 +190,62 @@
 
 ### Phase 3: Multi-Currency Support, Settings UI, and Chart Improvements ✅
 
+#### Brand Identity & Dark Theme Implementation (October 8, 2025 - PM Session)
+
+##### 1. Dark Mode Activation
+- **Issue**: Dark theme CSS configured but not applied by default
+- **Fix**: Added `className="dark"` to `<html>` tag in `app/layout.tsx`
+- **Result**: Default dark mode with brand colors:
+  - Background: #0F172A (dark navy slate)
+  - Text: #E6E9EF (light gray)
+  - Accent: #10B981 (emerald green)
+
+##### 2. Optaimi Spark Branding Integration
+- **Logo Assets**:
+  - Moved `attached_assets/optaimispark-logodark_1759911682325.png` → `public/logo.png`
+  - Moved `attached_assets/favicon-spark_1759911619410.png` → `app/icon.png`
+- **Header Update** (`app/page.tsx`):
+  - Replaced Lucide Zap icon with Next.js Image component
+  - Logo source: `/logo.png` with alt text "Optaimi Spark"
+  - Dimensions: 40x40 with auto-width for responsiveness
+- **Favicon**: Next.js 15 automatically serves `app/icon.png` as favicon
+
+##### 3. Brand Color Verification UI
+- **Added Visual Token Section** (bottom of dashboard):
+  - Displays all three brand colors with hex values
+  - Color swatches with actual colors for visual validation:
+    - #0F172A - Background swatch
+    - #E6E9EF - Primary Text swatch
+    - #10B981 - Accent swatch
+  - Purpose: Quick visual debugging of brand colors
+
+##### 4. Critical Backend Bug Fix: Coroutine Leak ❌→✅
+- **Issue**: RuntimeWarning: `coroutine 'test_anthropic' was never awaited`
+- **Root Cause**: 
+  - `model_tests` dictionary called async functions immediately: `"model": test_func("id")`
+  - Created coroutines for ALL models, but only SOME were awaited (based on `selected_models`)
+  - Unselected model coroutines never awaited, causing RuntimeWarnings
+- **Fix** (`main.py` lines 381-393):
+  ```python
+  # Before (BAD - creates coroutines immediately)
+  model_tests = {
+      "gpt-4o-mini": test_openai("gpt-4o-mini"),  # Creates coroutine NOW
+      ...
+  }
+  
+  # After (GOOD - lambdas defer coroutine creation)
+  model_test_funcs = {
+      "gpt-4o-mini": lambda: test_openai("gpt-4o-mini"),  # Creates coroutine only when called
+      ...
+  }
+  tests_to_run = [model_test_funcs[m]() for m in selected_models]
+  ```
+- **Validation**: 
+  - API tested with curl: 200 OK responses
+  - Backend logs show no RuntimeWarnings
+  - Architect review confirmed no remaining coroutine leaks
+- **Impact**: Refresh button now works correctly with no warnings
+
 #### 1. ExchangeRate-API Integration
 - **Currency Conversion Utility** (`main.py`):
   - Added `get_fx_rate()` function with 24-hour caching
