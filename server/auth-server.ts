@@ -39,9 +39,11 @@ function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Required when behind a proxy
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: 'auto', // Automatically set secure based on x-forwarded-proto
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });

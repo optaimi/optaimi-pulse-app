@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function GET() {
   try {
+    // Get cookies from Next.js
+    const cookieStore = await cookies()
+    const cookieHeader = cookieStore.toString()
+    
     // Proxy to Express auth server
     const res = await fetch('http://localhost:3001/api/auth/user', {
       headers: {
-        cookie: (await import('next/headers')).cookies().toString(),
+        cookie: cookieHeader,
       },
       credentials: 'include',
     })
