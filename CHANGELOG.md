@@ -63,6 +63,173 @@
 
 ---
 
+## Session Changelog (October 8, 2025)
+
+### Internal Database Authentication Migration ✅
+
+**Migration from Replit Auth to Internal Database-Based Authentication**
+
+#### Problem Addressed
+- User requirement: No third-party branding (Replit) in authentication flow
+- User requirement: Reliable email delivery for verification and password reset
+- Security: Need for secure, server-validated sessions
+
+#### Implementation
+
+**1. Database Schema Updates**
+- Added authentication fields to `users` table:
+  - `password_hash` (text) - bcrypt hashed passwords with 10 rounds
+  - `email_verified` (boolean) - email verification status
+  - `verification_token` (varchar) - for email verification and magic links
+  - `verification_token_expires` (timestamp) - token expiration
+  - `reset_token` (varchar) - for password reset flow
+  - `reset_token_expires` (timestamp) - reset token expiration
+- Existing `sessions` table used for secure session storage
+
+**2. Session Management System** (`lib/session.ts`)
+- **createSession()**: Generates cryptographically secure 32-byte random session IDs
+  - Stores sessions in PostgreSQL with 7-day expiration
+  - Returns session ID for cookie storage
+- **getSession()**: Validates session from database
+  - Checks expiration, auto-cleans expired sessions
+  - Returns session data (userId, email) or null
+- **deleteSession()**: Removes session from database on logout
+- **cleanExpiredSessions()**: Helper for periodic session cleanup
+
+**3. Authentication Utilities** (`lib/auth.ts`)
+- **hashPassword()**: bcryptjs hashing with 10 rounds
+- **verifyPassword()**: Secure password comparison
+- **generateToken()**: 32-byte random tokens for verification/reset
+- **Email validation**: Regex-based email format validation
+- **Token expiration helpers**: Configurable expiry times
+
+**4. Brevo Email Service** (`lib/email.ts`)
+- **sendVerificationEmail()**: Welcome email with 1-hour verification link
+- **sendMagicLinkEmail()**: Passwordless login link (15-minute expiry)
+- **sendPasswordResetEmail()**: Password reset link (1-hour expiry)
+- Uses Brevo API (sib-api-v3-sdk) for reliable delivery
+- All emails use Optaimi branding (no third-party mentions)
+
+**5. Auth API Routes**
+- **POST /api/auth/signup**: User registration with email verification
+  - Creates user with hashed password
+  - Generates verification token
+  - Sends verification email via Brevo
+- **POST /api/auth/login**: Email/password authentication
+  - Validates credentials with bcrypt
+  - Creates secure session
+  - Sets httpOnly session_id cookie
+- **GET /api/auth/verify**: Email verification handler
+  - Validates token and expiration
+  - Marks email as verified
+  - Redirects to signin with success message
+- **POST /api/auth/magic-link**: Request magic link
+  - Generates magic link token
+  - Sends passwordless login email
+- **GET /api/auth/magic-link/verify**: Magic link handler
+  - Validates magic link token
+  - Creates secure session
+  - Redirects to dashboard
+- **POST /api/auth/reset-password**: Request password reset
+  - Generates reset token
+  - Sends reset email with link
+- **POST /api/auth/reset-password/confirm**: Complete password reset
+  - Validates reset token
+  - Updates password with new hash
+  - Clears reset token
+- **POST /api/auth/logout**: Session termination
+  - Deletes session from database
+  - Clears session cookie
+- **GET /api/auth/user**: Get current user
+  - Validates session from database
+  - Returns user data (excludes sensitive fields)
+
+**6. Auth Pages**
+- **app/signin/page.tsx**: Email/password login form
+  - Email and password inputs
+  - "Forgot password?" link
+  - Magic link option
+  - "Sign up" link
+- **app/signup/page.tsx**: Registration form
+  - First/last name fields (optional)
+  - Email and password inputs
+  - Password requirements shown
+  - Success state with email verification instructions
+- **app/reset-password/page.tsx**: Password reset flow
+  - Request reset form (email input)
+  - Reset form with token (new password input)
+  - Success state with redirect
+
+**7. Middleware Updates** (`middleware.ts`)
+- Updated to validate `session_id` cookie instead of Replit Auth
+- Calls `/api/auth/user` to validate session server-side
+- Protects `/dashboard` and `/alerts` routes
+- Redirects to `/signin` if unauthorized
+
+**8. Security Implementation**
+- **Session Security**:
+  - Cryptographically secure 32-byte random session IDs (crypto.randomBytes)
+  - Server-side session validation (PostgreSQL lookup required)
+  - Cannot be forged or tampered with
+  - httpOnly cookies (prevents XSS)
+  - SameSite: lax (CSRF protection)
+  - Secure flag in production
+- **Password Security**:
+  - bcrypt hashing with 10 rounds
+  - Passwords never stored in plain text
+  - Secure password comparison
+- **Token Security**:
+  - 32-byte random tokens for all verification flows
+  - Expiration enforcement (1h for verification/reset, 15m for magic link)
+  - Tokens cleared after use
+- **Fixed Critical Vulnerability**: Replaced unsigned user_id cookies with server-validated sessions
+
+**9. Cleanup**
+- Removed Replit Auth server (`server/auth-server.ts`)
+- Deleted Auth workflow
+- Removed proxy routes (`/api/login`, `/api/callback`)
+- Uninstalled Replit Auth dependencies
+
+#### Files Created
+- `lib/session.ts` - Secure session management
+- `lib/auth.ts` - Authentication utilities
+- `lib/email.ts` - Brevo email service
+- `app/api/auth/signup/route.ts` - User registration
+- `app/api/auth/login/route.ts` - Email/password login
+- `app/api/auth/verify/route.ts` - Email verification
+- `app/api/auth/magic-link/route.ts` - Magic link request
+- `app/api/auth/magic-link/verify/route.ts` - Magic link handler
+- `app/api/auth/reset-password/route.ts` - Password reset request
+- `app/api/auth/reset-password/confirm/route.ts` - Password reset confirmation
+- `app/api/auth/logout/route.ts` - Logout handler
+- `app/api/auth/user/route.ts` - Current user endpoint
+- `app/signin/page.tsx` - Sign in page
+- `app/signup/page.tsx` - Sign up page
+- `app/reset-password/page.tsx` - Password reset page
+
+#### Database Changes
+```bash
+npm run db:push  # Applied auth schema changes
+```
+
+#### Testing Status
+- ✅ Session creation and validation working
+- ✅ Email/password login functional
+- ✅ Email verification flow complete
+- ✅ Magic link authentication working
+- ✅ Password reset flow complete
+- ✅ Logout properly deletes sessions
+- ✅ Middleware validates sessions correctly
+- ✅ Architect review: Security vulnerability fixed
+
+#### Next Steps (Recommended)
+1. Add scheduled job to call `cleanExpiredSessions()` periodically
+2. Monitor session table growth in production
+3. Consider adding rate limiting to auth endpoints
+4. Add email change/update flow if needed
+
+---
+
 ## Session Changelog (October 6, 2025)
 
 ### Phase 1-2: Live Concurrent Testing & Historical Data ✅
