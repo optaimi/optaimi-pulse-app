@@ -375,19 +375,19 @@ async def run_test(request: Request = None):
         except:
             pass  # Use defaults if body parsing fails
     
-    # Model test functions mapping
-    model_tests = {
-        "gpt-4o-mini": test_openai("gpt-4o-mini"),
-        "claude-3-5-haiku-20241022": test_anthropic("claude-3-5-haiku-20241022"),
-        "gemini-2.0-flash-exp": test_gemini("gemini-2.0-flash-exp"),
-        "deepseek-chat": test_deepseek("deepseek-chat"),
+    # Model test function mapping (don't call yet!)
+    model_test_funcs = {
+        "gpt-4o-mini": lambda: test_openai("gpt-4o-mini"),
+        "claude-3-5-haiku-20241022": lambda: test_anthropic("claude-3-5-haiku-20241022"),
+        "gemini-2.0-flash-exp": lambda: test_gemini("gemini-2.0-flash-exp"),
+        "deepseek-chat": lambda: test_deepseek("deepseek-chat"),
     }
     
     # If specific models selected, only test those
     if selected_models:
-        tests_to_run = [model_tests[m] for m in selected_models if m in model_tests]
+        tests_to_run = [model_test_funcs[m]() for m in selected_models if m in model_test_funcs]
     else:
-        tests_to_run = list(model_tests.values())
+        tests_to_run = [func() for func in model_test_funcs.values()]
     
     # Execute tests concurrently
     results = await asyncio.gather(*tests_to_run, return_exceptions=True)

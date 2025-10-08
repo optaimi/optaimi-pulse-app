@@ -60,20 +60,28 @@ export default function Home() {
     setLoading(true)
 
     try {
+      console.log('Refresh clicked. Enabled models:', enabledModels, 'Currency:', currency)
+      
       // POST request with selected models and currency
       const response = await fetch('/api/run-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          models: enabledModels,
+          models: enabledModels.length > 0 ? enabledModels : undefined,
           currency: currency
         })
       });
+      
+      console.log('API response status:', response.status)
       const data = await response.json();
+      console.log('API response data:', data)
 
       if (data.results) {
+        console.log('Setting results:', data.results)
         setResults(data.results);
         await fetchHistory();
+      } else {
+        console.warn('No results in response:', data)
       }
 
     } catch (error) {
