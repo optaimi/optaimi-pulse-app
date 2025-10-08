@@ -474,5 +474,154 @@ async def get_history(
         return {"error": str(e), "history": []}
 
 
+@app.post("/api/alerts/test")
+async def test_alert(request: Request):
+    """
+    Test alert configuration against recent metrics to see if it would trigger.
+    Returns evaluation result without creating an alert.
+    """
+    try:
+        body = await request.json()
+        alert_type = body.get("type")
+        model = body.get("model")
+        threshold = body.get("threshold")
+        window = body.get("window", "24h")
+        
+        # Validate required fields
+        if not alert_type:
+            return {"error": "Alert type is required", "would_trigger": False}
+        
+        # Calculate time threshold
+        now = datetime.now()
+        if window == "24h":
+            time_threshold = now - timedelta(hours=24)
+        elif window == "7d":
+            time_threshold = now - timedelta(days=7)
+        else:
+            time_threshold = now - timedelta(hours=24)
+        
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Query recent metrics based on alert configuration
+        if model:
+            cur.execute("""
+                SELECT ts, model, latency_s, tps, cost_usd, in_tokens, out_tokens, error
+                FROM results
+                WHERE model = %s AND ts >= %s
+                ORDER BY ts DESC
+                LIMIT 100
+            """, (model, time_threshold))
+        else:
+            cur.execute("""
+                SELECT ts, model, latency_s, tps, cost_usd, in_tokens, out_tokens, error
+                FROM results
+                WHERE ts >= %s
+                ORDER BY ts DESC
+                LIMIT 100
+            """, (time_threshold,))
+        
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not rows:
+            return {
+                "would_trigger": False,
+                "reason": "No recent data available for evaluation",
+                "data_points": 0,
+            }
+        
+        # Evaluate alert condition based on type
+        would_trigger = False
+        trigger_details = {}
+        
+        if alert_type == "latency" and threshold:
+            try:
+                threshold_val = float(threshold)
+            except (ValueError, TypeError):
+                return {"error": "Invalid threshold value for latency alert", "would_trigger": False}
+            max_latency = max((r["latency_s"] or 0) for r in rows)
+            would_trigger = max_latency > threshold_val
+            trigger_details = {
+                "max_latency": round(max_latency, 3),
+                "threshold": threshold_val,
+                "comparison": f"{max_latency:.3f}s > {threshold_val}s"
+            }
+        
+        elif alert_type == "tps_drop" and threshold:
+            try:
+                threshold_val = float(threshold)
+            except (ValueError, TypeError):
+                return {"error": "Invalid threshold value for tps_drop alert", "would_trigger": False}
+            # Calculate average TPS and check for drops
+            valid_tps = [r["tps"] for r in rows if r["tps"] is not None]
+            if valid_tps:
+                avg_tps = sum(valid_tps) / len(valid_tps)
+                min_tps = min(valid_tps)
+                drop_percent = ((avg_tps - min_tps) / avg_tps * 100) if avg_tps > 0 else 0
+                would_trigger = drop_percent > threshold_val
+                trigger_details = {
+                    "avg_tps": round(avg_tps, 2),
+                    "min_tps": round(min_tps, 2),
+                    "drop_percent": round(drop_percent, 2),
+                    "threshold": threshold_val,
+                    "comparison": f"{drop_percent:.2f}% > {threshold_val}%"
+                }
+        
+        elif alert_type == "cost_mtok" and threshold:
+            try:
+                threshold_val = float(threshold)
+            except (ValueError, TypeError):
+                return {"error": "Invalid threshold value for cost_mtok alert", "would_trigger": False}
+            # Calculate cost per million tokens
+            costs = []
+            for r in rows:
+                if r["cost_usd"] and r["in_tokens"] and r["out_tokens"]:
+                    total_tokens = r["in_tokens"] + r["out_tokens"]
+                    if total_tokens > 0:
+                        cost_per_mtok = (r["cost_usd"] / total_tokens) * 1_000_000
+                        costs.append(cost_per_mtok)
+            
+            if costs:
+                max_cost_mtok = max(costs)
+                would_trigger = max_cost_mtok > threshold_val
+                trigger_details = {
+                    "max_cost_per_mtok": round(max_cost_mtok, 2),
+                    "threshold": threshold_val,
+                    "comparison": f"${max_cost_mtok:.2f} > ${threshold_val}"
+                }
+        
+        elif alert_type == "error":
+            # Check if there are any errors in the window
+            error_count = sum(1 for r in rows if r["error"] is not None)
+            would_trigger = error_count > 0
+            trigger_details = {
+                "error_count": error_count,
+                "total_requests": len(rows),
+                "error_rate": round((error_count / len(rows) * 100), 2) if rows else 0
+            }
+        
+        elif alert_type == "digest":
+            # Digest always triggers (it's a summary)
+            would_trigger = True
+            trigger_details = {
+                "data_points": len(rows),
+                "models_tested": len(set(r["model"] for r in rows)),
+                "time_window": window
+            }
+        
+        return {
+            "would_trigger": would_trigger,
+            "alert_type": alert_type,
+            "data_points": len(rows),
+            "window": window,
+            "details": trigger_details,
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "would_trigger": False}
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
