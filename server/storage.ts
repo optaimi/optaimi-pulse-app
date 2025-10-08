@@ -1,10 +1,31 @@
 import { db } from './db'
-import { alerts, userSettings, emailEvents, users } from '../shared/schema'
+import { alerts, userSettings, emailEvents, users, type User, type UpsertUser } from '../shared/schema'
 import { eq, and, desc } from 'drizzle-orm'
+
+// User operations (REQUIRED for Replit Auth)
+export async function getUser(id: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.id, id))
+  return user
+}
+
+export async function upsertUser(userData: UpsertUser): Promise<User> {
+  const [user] = await db
+    .insert(users)
+    .values(userData)
+    .onConflictDoUpdate({
+      target: users.id,
+      set: {
+        ...userData,
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+  return user
+}
 
 // Alert CRUD operations
 export async function createAlert(data: {
-  userId: number
+  userId: string
   type: 'latency' | 'tps_drop' | 'cost_mtok' | 'error' | 'digest'
   model?: string
   threshold?: string
@@ -16,14 +37,14 @@ export async function createAlert(data: {
   return alert
 }
 
-export async function getAlertsByUserId(userId: number) {
+export async function getAlertsByUserId(userId: string) {
   return await db.query.alerts.findMany({
     where: eq(alerts.userId, userId),
     orderBy: [desc(alerts.createdAt)],
   })
 }
 
-export async function getAlertById(alertId: number, userId: number) {
+export async function getAlertById(alertId: number, userId: string) {
   return await db.query.alerts.findFirst({
     where: and(eq(alerts.id, alertId), eq(alerts.userId, userId)),
   })
@@ -31,7 +52,7 @@ export async function getAlertById(alertId: number, userId: number) {
 
 export async function updateAlert(
   alertId: number,
-  userId: number,
+  userId: string,
   data: {
     type?: 'latency' | 'tps_drop' | 'cost_mtok' | 'error' | 'digest'
     model?: string | null
@@ -49,7 +70,7 @@ export async function updateAlert(
   return alert
 }
 
-export async function deleteAlert(alertId: number, userId: number) {
+export async function deleteAlert(alertId: number, userId: string) {
   const [alert] = await db
     .delete(alerts)
     .where(and(eq(alerts.id, alertId), eq(alerts.userId, userId)))
@@ -67,14 +88,14 @@ export async function getAllActiveAlerts() {
 }
 
 // User Settings operations
-export async function getUserSettings(userId: number) {
+export async function getUserSettings(userId: string) {
   return await db.query.userSettings.findFirst({
     where: eq(userSettings.userId, userId),
   })
 }
 
 export async function createUserSettings(data: {
-  userId: number
+  userId: string
   currency?: string
   quietHours?: any
 }) {
@@ -83,7 +104,7 @@ export async function createUserSettings(data: {
 }
 
 export async function updateUserSettings(
-  userId: number,
+  userId: string,
   data: {
     currency?: string
     quietHours?: any
@@ -98,7 +119,7 @@ export async function updateUserSettings(
 }
 
 export async function upsertUserSettings(data: {
-  userId: number
+  userId: string
   currency?: string
   quietHours?: any
 }) {
@@ -113,7 +134,7 @@ export async function upsertUserSettings(data: {
 
 // Email Events operations
 export async function createEmailEvent(data: {
-  userId: number
+  userId: string
   alertId?: number | null
   status: string
   payload?: any
@@ -122,7 +143,7 @@ export async function createEmailEvent(data: {
   return event
 }
 
-export async function getEmailEventsByUserId(userId: number, limit = 50) {
+export async function getEmailEventsByUserId(userId: string, limit = 50) {
   return await db.query.emailEvents.findMany({
     where: eq(emailEvents.userId, userId),
     orderBy: [desc(emailEvents.sentAt)],
@@ -130,23 +151,20 @@ export async function getEmailEventsByUserId(userId: number, limit = 50) {
   })
 }
 
-export async function getEmailEventsByAlertId(alertId: number, limit = 50) {
-  return await db.query.emailEvents.findMany({
-    where: eq(emailEvents.alertId, alertId),
-    orderBy: [desc(emailEvents.sentAt)],
-    limit,
-  })
-}
-
-// User operations
-export async function getUserByEmail(email: string) {
-  return await db.query.users.findFirst({
-    where: eq(users.email, email),
-  })
-}
-
-export async function getUserById(userId: number) {
-  return await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  })
+// Export storage object for Replit Auth integration
+export const storage = {
+  getUser,
+  upsertUser,
+  createAlert,
+  getAlertsByUserId,
+  getAlertById,
+  updateAlert,
+  deleteAlert,
+  getAllActiveAlerts,
+  getUserSettings,
+  createUserSettings,
+  updateUserSettings,
+  upsertUserSettings,
+  createEmailEvent,
+  getEmailEventsByUserId,
 }

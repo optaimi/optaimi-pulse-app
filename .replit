@@ -16,6 +16,10 @@ localPort = 3000
 externalPort = 3000
 
 [[ports]]
+localPort = 3001
+externalPort = 3002
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
@@ -43,6 +47,10 @@ args = "Frontend"
 task = "workflow.run"
 args = "Backend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Auth"
+
 [[workflows.workflow]]
 name = "Frontend"
 author = "agent"
@@ -61,6 +69,17 @@ author = "agent"
 task = "shell.exec"
 args = "python main.py"
 waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Auth"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx tsx server/auth-server.ts"
 
 [workflows.workflow.metadata]
 outputType = "console"
