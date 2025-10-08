@@ -20,7 +20,7 @@ async function sendEmail({ to, subject, htmlContent }: EmailParams) {
   
   sendSmtpEmail.sender = { 
     name: 'Optaimi Pulse', 
-    email: 'noreply@optaimipulse.com' 
+    email: 'pulse@optaimi.com' 
   }
   sendSmtpEmail.to = [{ email: to }]
   sendSmtpEmail.subject = subject
