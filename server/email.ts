@@ -1,16 +1,16 @@
-const SibApiV3Sdk = require('sib-api-v3-sdk')
+import * as brevo from '@getbrevo/brevo'
 
-const defaultClient = SibApiV3Sdk.ApiClient.instance
-const apiKey = defaultClient.authentications['api-key']
-apiKey.apiKey = process.env.BREVO_API_KEY
-
-const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
+const apiInstance = new brevo.TransactionalEmailsApi()
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY || ''
+)
 
 export async function sendMagicLinkEmail(params: {
   to: string
   url: string
 }) {
-  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+  const sendSmtpEmail = new brevo.SendSmtpEmail()
 
   sendSmtpEmail.subject = 'Sign in to Optaimi Pulse'
   sendSmtpEmail.htmlContent = `
@@ -64,7 +64,7 @@ export async function sendAlertEmail(params: {
   threshold: string
   timestamp: string
 }) {
-  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+  const sendSmtpEmail = new brevo.SendSmtpEmail()
 
   sendSmtpEmail.subject = `⚠️ Alert: ${params.alertType} threshold exceeded for ${params.model}`
   sendSmtpEmail.htmlContent = `
