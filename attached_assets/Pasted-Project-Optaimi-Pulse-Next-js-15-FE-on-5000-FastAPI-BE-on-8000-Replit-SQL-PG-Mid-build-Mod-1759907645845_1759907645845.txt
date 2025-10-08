@@ -1,0 +1,46 @@
+Project: Optaimi Pulse (Next.js 15 FE on :5000 + FastAPI BE on :8000, Replit SQL/PG). Mid-build.
+Mode: Build. Small, atomic commits. Use Workflows, Secrets, and Scheduled Deployments correctly.
+
+Objectives (finish Phase 1–2):
+1) Settings Drawer:
+   - Let users choose enabled models AND currency (“GBP” default, “USD” optional).
+   - Persist to localStorage keys: pulse.enabledModels, pulse.currency.
+   - Refresh button POSTs { models, currency } to /api/run-test.
+2) Charts “Invalid Date” fix:
+   - History API returns epoch ms (ts_ms). Frontend uses numeric X-axis and formats ticks.
+3) Correct “Avg Cost / Mtok”:
+   - Per result: blended_cost_per_mtok = cost_usd / ((in_tokens + out_tokens)/1e6).
+   - Display in selected currency using fx_usd_gbp from Secrets (env: FX_USD_GBP). Default to GBP.
+   - Frontend formats via Intl.NumberFormat with currency from settings.
+4) Design-system alignment:
+   - Import optaimi-design-system tokens/components; remove local overrides that fight radii/spacing.
+   - Use provided CSS vars directly (no wrapping OKLCH vars in hsl()).
+
+Backend tasks (main.py, scheduler.py, history route):
+- /api/run-test: accept body {models?: list[str], currency?: 'GBP'|'USD'}; run only selected models.
+- Currency util: convert(amount_usd, currency) using FX_USD_GBP (float). Add to responses cost_gbp = convert(cost_usd,'GBP').
+- History query: SELECT ts_ms (epoch*1000), provider, model, latency_s, tps, cost_usd, in_tokens, out_tokens. Do not recalc cost; FE derives blended per Mtok and converts for display.
+- Scheduler writes results with ts now and cost_usd; do NOT hardcode FX; read Secrets each run.
+
+Frontend tasks (app/*):
+- Add components/SettingsDrawer.tsx (gear icon). Uses design-system Drawer, Checkbox, Select.
+- Read/write localStorage keys; initial defaults: cheapest model per provider; currency='GBP'.
+- Charts: dynamic import Recharts; XAxis type="number" dataKey="ts_ms"; tickFormatter -> locale time.
+- Tiles: compute blended average across selected models (skip nulls). Show symbol via Intl.NumberFormat.
+- Table: show cost column in selected currency (converted from cost_usd at render).
+
+Dev/Deploy hygiene:
+- Keep two Workflows in dev (Next :5000, FastAPI :8000). 
+- Production note (no change now): FE Autoscale (single port 80) + BE Reserved VM (:8000). FE rewrites /api/* -> BE URL. Scheduler as Scheduled Deployment (15 min).
+
+Validation checklist (Agent must verify):
+- Changing model checkboxes reduces calls (observe network). Currency toggle live-updates symbols/values.
+- Charts render with correct dates (no “Invalid Date”) and multiple historical points.
+- Avg Cost/Mtok > 0 when tokens exist and equals manual calculation.
+- UI uses design-system components/tokens; passes basic a11y checks.
+
+Deliverables:
+- Code changes with comments.
+- CHANGELOG.md updated with new changes
+- README snippet: settings, currency, FX secret, workflows/deploy notes.
+- One screenshot of Settings Drawer and one of fixed charts.
