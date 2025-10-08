@@ -310,6 +310,37 @@ export default function Home() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Brand Token Verification</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded border-2 border-border" style={{ backgroundColor: '#0F172A' }} />
+                <div className="text-sm">
+                  <div className="font-mono font-semibold">#0F172A</div>
+                  <div className="text-muted-foreground">Background</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded border-2 border-border" style={{ backgroundColor: '#E6E9EF' }} />
+                <div className="text-sm">
+                  <div className="font-mono font-semibold">#E6E9EF</div>
+                  <div className="text-muted-foreground">Primary Text</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded border-2 border-border" style={{ backgroundColor: '#10B981' }} />
+                <div className="text-sm">
+                  <div className="font-mono font-semibold">#10B981</div>
+                  <div className="text-muted-foreground">Accent</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
