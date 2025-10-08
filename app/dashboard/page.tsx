@@ -123,7 +123,8 @@ export default function Home() {
     if (results.length > 0) {
       fetchHistory()
     }
-  }, [timeRange, enabledModels])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange, enabledModels, results.length])
 
   const handleSettingsChange = (settings: { enabledModels: string[]; currency: string }) => {
     setEnabledModels(settings.enabledModels)
@@ -339,7 +340,7 @@ export default function Home() {
           <Card className="border-2">
             <CardContent className="py-12">
               <div className="text-center text-muted-foreground">
-                <p className="text-lg">Click "Refresh" to run performance tests on all LLM models</p>
+                <p className="text-lg">Click &quot;Refresh&quot; to run performance tests on all LLM models</p>
               </div>
             </CardContent>
           </Card>

@@ -70,7 +70,7 @@ export default function SignInPage() {
           <CardHeader>
             <CardTitle>Check your email</CardTitle>
             <CardDescription>
-              We've sent a magic link to {email}
+              We&apos;ve sent a magic link to {email}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -195,7 +195,7 @@ export default function SignInPage() {
           )}
 
           <div className="mt-4 text-center text-sm">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-emerald-500 hover:underline">
               Sign up
             </Link>
