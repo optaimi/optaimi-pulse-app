@@ -11,11 +11,19 @@ export const users = pgTable('users', {
 
 // Sessions table for NextAuth
 export const sessions = pgTable('sessions', {
-  id: text('id').primaryKey(),
-  sessionToken: text('session_token').notNull().unique(),
+  sessionToken: text('session_token').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  expiresAt: timestamp('expires_at').notNull(),
+  expires: timestamp('expires').notNull(),
 })
+
+// Verification tokens table for NextAuth magic-link
+export const verificationTokens = pgTable('verification_tokens', {
+  identifier: text('identifier').notNull(),
+  token: text('token').notNull().unique(),
+  expires: timestamp('expires').notNull(),
+}, (table) => ({
+  pk: { primaryKey: [table.identifier, table.token] }
+}))
 
 // Alert types enum
 export const alertTypeEnum = pgEnum('alert_type', [
@@ -83,6 +91,8 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+export const verificationTokensRelations = relations(verificationTokens, ({ one }) => ({}))
 
 export const alertsRelations = relations(alerts, ({ one, many }) => ({
   user: one(users, {
