@@ -22,6 +22,10 @@ Optaimi Pulse is a Next.js 15 dashboard application for real-time performance an
 
 Preferred communication style: Simple, everyday language.
 
+## Important: Project Documentation
+
+**CHANGELOG.md**: This project maintains a comprehensive changelog (`CHANGELOG.md`) that documents all changes, architecture decisions, and implementation details. **After any significant change to the project, update CHANGELOG.md** to keep it current. This helps maintain project context across sessions and assists collaboration.
+
 ## System Architecture
 
 ### Frontend Architecture
