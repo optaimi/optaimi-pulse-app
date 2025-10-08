@@ -186,16 +186,152 @@
 
 ---
 
+## Session Changelog (October 8, 2025)
+
+### Phase 3: Multi-Currency Support, Settings UI, and Chart Improvements ✅
+
+#### 1. ExchangeRate-API Integration
+- **Currency Conversion Utility** (`main.py`):
+  - Added `get_fx_rate()` function with 24-hour caching
+  - Uses ExchangeRate-API free tier (1,500 requests/month limit)
+  - Fetches USD→GBP exchange rate on demand
+  - Implements in-memory cache to minimize API calls
+  - Returns cached rate if within 24-hour window
+
+- **FX_USD_GBP Secret Check**:
+  - Checks for optional `FX_USD_GBP` environment variable
+  - Falls back to live API call if not provided
+  - Enables manual rate override for testing/stability
+
+#### 2. Backend API Enhancements
+- **POST `/api/run-test` Endpoint**:
+  - Now accepts POST requests with JSON body: `{models?: string[], currency?: 'GBP'|'USD'}`
+  - `models` parameter enables selective model testing (array of model IDs)
+  - `currency` parameter controls cost conversion in response
+  - Backward compatible: GET requests still work with all models
+
+- **Response Format Updates**:
+  - Added `cost_gbp` field to all model results
+  - Converted using live or cached FX rate
+  - Both `cost_usd` and `cost_gbp` returned for client-side flexibility
+
+- **GET `/api/history` Enhancements**:
+  - Returns `ts_ms` (epoch milliseconds) instead of string timestamps
+  - Calculates `ts_ms = int(ts.timestamp()) * 1000` for JavaScript Date compatibility
+  - Includes both `cost_usd` and computed `cost_gbp` for historical data
+  - Enables numeric X-axis charting with proper date formatting
+
+#### 3. Frontend Settings Drawer
+- **Created SettingsDrawer Component** (`design-system/components/SettingsDrawer.tsx`):
+  - Slide-out drawer using Radix UI Sheet primitives
+  - **Model Selection**: Checkboxes for all 4 models
+    - GPT-4o Mini (OpenAI)
+    - Claude 3.5 Haiku (Anthropic)
+    - Gemini 2.0 Flash (Google)
+    - DeepSeek Chat (DeepSeek)
+  - **Currency Toggle**: Switch between GBP and USD
+  - **localStorage Persistence**:
+    - `pulse.enabledModels`: JSON array of selected model IDs
+    - `pulse.currency`: 'GBP' or 'USD' string
+  - Default: GPT-4o Mini + Gemini 2.0 Flash in GBP
+
+- **Created Sheet Component** (`design-system/components/ui/sheet.tsx`):
+  - Wrapper around Radix UI Dialog with slide-in animation
+  - SheetTrigger, SheetContent, SheetHeader, SheetTitle subcomponents
+  - Responsive overlay with proper z-indexing
+
+- **Created Checkbox Component** (`design-system/components/ui/checkbox.tsx`):
+  - Radix UI Checkbox primitive with custom styling
+  - Emerald checkmark icon using Lucide React
+  - Accessible with proper ARIA attributes
+
+#### 4. Chart Date Fix
+- **PerformanceChart Component Updates** (`design-system/components/PerformanceChart.tsx`):
+  - **HistoryPoint Interface**: Changed `timestamp: string` → `ts_ms: number`
+  - **Numeric X-Axis**: XAxis now uses `type="number"` with `dataKey="ts_ms"`
+  - **Date Formatting**: Added `formatTimestamp()` helper function
+    - Converts epoch ms → locale date string
+    - Format: "Oct 8, 14:30" (short month, day, time)
+  - **Tick Formatter**: XAxis `tickFormatter={formatTimestamp}`
+  - **Tooltip Enhancement**: Added `labelFormatter={formatTimestamp}` for hover labels
+  - **Result**: Fixed "Invalid Date" errors in charts, proper date display on X-axis
+
+#### 5. Blended Cost Per Million Tokens
+- **Cost Calculation Method**:
+  - Formula: `(cost / (in_tokens + out_tokens)) * 1_000_000`
+  - Calculates cost per million tokens across entire conversation
+  - Replaces previous simple cost display
+
+- **Currency-Aware Calculation** (`app/page.tsx`):
+  - `calculateBlendedCostPerMtok(result, currency)`:
+    - Uses `result.cost_gbp` when currency is 'GBP'
+    - Uses `result.cost_usd` when currency is 'USD'
+    - Returns null if no cost data available
+  - Critical fix: Ensures displayed cost matches selected currency
+
+- **Currency Formatting Helper**:
+  - `formatCurrency(amount, curr)`: Intl.NumberFormat with currency symbols
+  - Displays £ for GBP, $ for USD
+  - 4-6 decimal places for precision (e.g., £0.003456)
+
+- **Applied to**:
+  - Average Cost tile (dashboard header)
+  - Latest Results table (Cost / Mtok column)
+  - Both dynamically update when currency changes
+
+#### 6. Next.js API Route Updates
+- **POST Handler** (`app/api/run-test/route.ts`):
+  - Added POST method alongside existing GET
+  - Proxies request body to FastAPI backend
+  - Enables selective model testing from frontend
+
+- **Backward Compatibility**:
+  - GET requests continue to work (test all models)
+  - POST requests enable custom model selection
+
+#### 7. Main Dashboard Integration
+- **Settings Icon**: Gear icon button next to Refresh
+- **Currency State Management**:
+  - `useState<Currency>("GBP")` with localStorage sync
+  - Updates propagate to all cost calculations
+- **Model Selection State**:
+  - `useState<string[]>` with default: ["gpt-4o-mini", "gemini-2.0-flash-exp"]
+  - Passed to POST /api/run-test for selective testing
+- **Refresh Function Update**:
+  - Changed from GET to POST with `{models: enabledModels, currency}` body
+  - Only tests selected models, returns costs in selected currency
+
+#### 8. Critical Bug Fixes
+
+##### Bug #1: Blended Cost Currency Mismatch ❌→✅
+- **Issue**: `calculateBlendedCostPerMtok()` always used `cost_usd` even when GBP selected
+- **Impact**: GBP costs showed USD values with £ symbol (incorrect conversion)
+- **Fix**: 
+  - Updated function to accept `curr: Currency` parameter
+  - Branches on currency: `curr === 'GBP' ? result.cost_gbp : result.cost_usd`
+  - All call sites now pass `currency` state variable
+- **Locations Fixed**:
+  - Line 153: Average cost tile calculation
+  - Line 289: Results table cost column
+- **Result**: Costs now correctly display in selected currency
+
+---
+
 ## Current System Status
 
 ### ✅ Fully Operational Features
 1. **Live Concurrent API Testing**: GPT-4o Mini & Gemini 2.0 Flash working
 2. **PostgreSQL Persistence**: All test results stored with timestamps
-3. **Historical Data Visualization**: Recharts displaying latency & TPS trends
+3. **Historical Data Visualization**: Recharts displaying latency & TPS trends with proper date formatting
 4. **Time-Range Filtering**: 24h/7d/30d toggle working correctly
-5. **Metric Aggregation**: Average calculations for latency, TPS, cost
+5. **Metric Aggregation**: Average calculations for latency, TPS, blended cost per Mtok
 6. **Full-Stack Integration**: Next.js ↔ FastAPI ↔ PostgreSQL pipeline complete
 7. **Error Handling**: Graceful failure display for unavailable models
+8. **Multi-Currency Support**: GBP/USD toggle with ExchangeRate-API integration (24h caching)
+9. **Settings Drawer**: User-configurable model selection and currency preference
+10. **localStorage Persistence**: Settings saved between sessions
+11. **Selective Model Testing**: Only test enabled models to save API costs
+12. **Blended Cost Calculation**: Cost per million tokens with currency-aware display
 
 ### ⚠️ Known Limitations
 1. **Claude 3.5 Haiku**: Requires Anthropic API credits
@@ -244,9 +380,12 @@
 ├── design-system/
 │   └── components/
 │       ├── PerformanceChart.tsx  # Recharts visualization component
+│       ├── SettingsDrawer.tsx    # Settings UI with model/currency selection
 │       └── ui/                   # Radix UI-based components
 │           ├── card.tsx
-│           └── button.tsx
+│           ├── button.tsx
+│           ├── sheet.tsx         # Slide-out drawer component
+│           └── checkbox.tsx      # Checkbox component
 ├── main.py                       # FastAPI backend with LLM testing
 ├── scheduler.py                  # Scheduled deployment script
 ├── package.json                  # Node.js dependencies
@@ -303,6 +442,6 @@ curl http://localhost:5000/api/run-test
 
 ---
 
-**Last Updated**: October 6, 2025  
-**Current Version**: Phase 1-2 Complete  
-**Status**: ✅ Production Ready (2 of 4 models operational)
+**Last Updated**: October 8, 2025  
+**Current Version**: Phase 3 Complete (Multi-Currency + Settings UI)  
+**Status**: ✅ Production Ready (2 of 4 models operational, GBP/USD support)

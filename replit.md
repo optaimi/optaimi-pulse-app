@@ -4,9 +4,21 @@
 
 Optaimi Pulse is a Next.js 15 dashboard application for real-time performance and cost analysis of leading LLMs. The application displays performance metrics including latency, tokens per second, and cost per million tokens for 8 AI models from different providers (OpenAI, Anthropic, Google, DeepSeek). Built with Next.js 15 App Router, React 19, TypeScript, and Tailwind CSS 4, it features a modern, responsive UI using Radix UI components.
 
-## Recent Changes (October 6, 2025)
+## Recent Changes (October 8, 2025)
 
-### Phase 1-2 Implementation Complete ✅
+### Phase 3 Implementation Complete ✅
+- **Multi-Currency Support**: GBP/USD toggle with ExchangeRate-API integration (24h caching, 1.5K/month free tier)
+- **Settings Drawer**: Slide-out UI for model selection (checkboxes) and currency preference toggle
+- **localStorage Persistence**: User settings saved between sessions (pulse.enabledModels, pulse.currency)
+- **Selective Model Testing**: Backend accepts POST `/api/run-test` with `{models?, currency?}` body to test only enabled models
+- **Blended Cost Per Mtok**: Display formula `(cost / total_tokens) * 1_000_000` with currency-aware calculation
+- **Chart Date Fix**: Converted timestamps to epoch milliseconds (ts_ms) with numeric X-axis and proper date formatting
+- **Currency Conversion**: Backend returns both cost_usd and cost_gbp using live or cached FX rate
+- **New Components**: Sheet.tsx, Checkbox.tsx, SettingsDrawer.tsx in design-system
+- **API Enhancements**: POST method for /api/run-test, ts_ms field in /api/history, cost_gbp in all responses
+- **Bug Fix**: calculateBlendedCostPerMtok now respects selected currency (uses cost_gbp for GBP, cost_usd for USD)
+
+### Phase 1-2 Implementation (October 6, 2025) ✅
 - **Live Concurrent API Calls**: Real-time testing of 4 LLM models (gpt-4o-mini, claude-3-5-haiku-20241022, gemini-2.0-flash-exp, deepseek-chat)
 - **PostgreSQL Persistence**: Database table `results` storing test history with timestamps, latency, TPS, cost, and error tracking
 - **Historical Charts**: Performance visualization with Recharts showing latency and tokens/sec trends over time
