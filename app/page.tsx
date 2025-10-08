@@ -126,12 +126,13 @@ export default function Home() {
     return formatter.format(amount)
   }
 
-  // Calculate blended cost per Mtok
-  const calculateBlendedCostPerMtok = (result: ModelResult): number | null => {
-    if (!result.cost_usd || !result.in_tokens || !result.out_tokens) return null
+  // Calculate blended cost per Mtok (respects selected currency)
+  const calculateBlendedCostPerMtok = (result: ModelResult, curr: Currency = currency): number | null => {
+    const cost = curr === 'GBP' ? result.cost_gbp : result.cost_usd
+    if (!cost || !result.in_tokens || !result.out_tokens) return null
     const totalTokens = result.in_tokens + result.out_tokens
     if (totalTokens === 0) return null
-    return (result.cost_usd / totalTokens) * 1_000_000
+    return (cost / totalTokens) * 1_000_000
   }
 
   // Average metrics calculations
@@ -145,8 +146,8 @@ export default function Home() {
     ? (validResults.reduce((sum, r) => sum + r.tps, 0) / validResults.length).toFixed(0)
     : '---'
   
-  // Avg cost per Mtok (blended across all models)
-  const blendedCosts = validResults.map(r => calculateBlendedCostPerMtok(r)).filter(c => c !== null) as number[]
+  // Avg cost per Mtok (blended across all models, respects currency)
+  const blendedCosts = validResults.map(r => calculateBlendedCostPerMtok(r, currency)).filter(c => c !== null) as number[]
   const avgCostPerMtok = blendedCosts.length > 0
     ? blendedCosts.reduce((sum, c) => sum + c, 0) / blendedCosts.length
     : null
@@ -282,7 +283,7 @@ export default function Home() {
                             {result.error ? '---' : result.tps.toFixed(0)}
                           </td>
                           <td className="text-right py-3 px-4 tabular-nums">
-                            {result.error ? '---' : formatCurrency(calculateBlendedCostPerMtok(result), currency)}
+                            {result.error ? '---' : formatCurrency(calculateBlendedCostPerMtok(result, currency), currency)}
                           </td>
                         </tr>
                       ))}
