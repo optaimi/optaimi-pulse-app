@@ -632,6 +632,101 @@
 
 ### ✅ Fully Operational Features
 
+---
+
+## Session Changelog (October 8, 2025 - Deployment Fixes)
+
+### Phase 5: Production Deployment Fixes ✅
+
+#### Overview
+Resolved 6 critical deployment blockers that prevented Next.js 15 production build from succeeding. All fixes ensure compliance with Next.js 15 App Router requirements and modern React best practices.
+
+#### 1. Brevo SDK Package Update ❌→✅
+- **Issue**: Deprecated `sib-api-v3-sdk` package causing build failures
+- **Fix**: Replaced with official `@getbrevo/brevo` package
+  - Updated imports in `server/email.ts`
+  - Changed from `SibApiV3Sdk` to `@getbrevo/brevo` module
+  - Updated API initialization: `new TransactionalEmailsApi()`
+  - Updated `sendTransacEmail()` method calls
+- **Files Modified**: `server/email.ts`
+- **Package Changes**: Removed `sib-api-v3-sdk`, added `@getbrevo/brevo`
+
+#### 2. ESLint Build Errors ❌→✅
+- **Issue**: Unescaped quotes and apostrophes in JSX causing production build to fail
+- **Fixes Applied**:
+  - `app/dashboard/page.tsx` line 342: Changed `"Refresh"` to `&quot;Refresh&quot;`
+  - `app/signin/page.tsx` line 73: Changed `We've` to `We&apos;ve`
+  - `app/signin/page.tsx` line 198: Changed `Don't` to `Don&apos;t`
+  - `app/dashboard/page.tsx` line 126: Added `results.length` to useEffect dependency array with eslint-disable comment
+- **Result**: All ESLint violations resolved, production build passes
+
+#### 3. Next.js 15 Dynamic Route Async Params ❌→✅
+- **Issue**: Dynamic route handlers not using async params as required by Next.js 15
+- **Fix**: Updated `app/api/alerts/[id]/route.ts`
+  - Changed params type from `{ params: { id: string } }` to `{ params: Promise<{ id: string }> }`
+  - Added `const { id } = await params` before accessing id parameter
+  - Applied to all three route handlers: GET, PATCH, DELETE
+- **Impact**: Dynamic routes now comply with Next.js 15 async route segment requirements
+
+#### 4. NextAuth authOptions Export Refactoring ❌→✅
+- **Issue**: Route handlers can only export HTTP method handlers (GET, POST), not arbitrary named exports
+- **Problem**: `authOptions` was exported from `app/api/auth/[...nextauth]/route.ts`, violating Next.js 15 rules
+- **Fix**: 
+  - Created `lib/auth.ts` with complete NextAuth configuration
+  - Moved `authOptions` object to `lib/auth.ts`
+  - Updated `app/api/auth/[...nextauth]/route.ts` to only export GET and POST handlers
+  - Updated all imports across the app:
+    - `app/api/alerts/route.ts`
+    - `app/api/alerts/[id]/route.ts`
+    - `app/api/alerts/test/route.ts`
+- **Result**: Route handlers now compliant with Next.js 15 export requirements
+
+#### 5. useSearchParams Suspense Boundary ❌→✅
+- **Issue**: `useSearchParams()` hook requires Suspense boundary for static generation
+- **Error**: Next.js build failed during prerendering of `/signin` page
+- **Fix**: `app/signin/page.tsx`
+  - Extracted main logic into `SignInForm` client component
+  - Wrapped `SignInForm` in `<Suspense>` boundary in default export
+  - Added loading fallback UI: "Loading..." message
+- **Result**: Static generation succeeds, proper loading states during hydration
+
+#### 6. NextAuth SessionProvider Configuration ❌→✅
+- **Issue**: `useSession()` hook returned undefined during build, NextAuth SessionProvider missing from app
+- **Error**: `/alerts` page build failed because session data unavailable during static generation
+- **Fix - Part 1: SessionProvider Setup**
+  - Created `app/providers.tsx` as client component
+  - Wrapped children with `<SessionProvider>` from `next-auth/react`
+  - Updated `app/layout.tsx` to use Providers component
+  - SessionProvider now available to all pages
+- **Fix - Part 2: Dynamic Route Configuration**
+  - Created `app/alerts/alerts-content.tsx` as client component (contains `useSession()` logic)
+  - Renamed original page component to `AlertsContent` export
+  - Created new `app/alerts/page.tsx` as server component
+  - Added `export const dynamic = 'force-dynamic'` to page.tsx
+  - Page.tsx renders `<AlertsContent />` component
+- **Critical Insight**: Next.js requires route segment config (`dynamic`) to be in server components
+- **Result**: Authentication works throughout app, `/alerts` route renders dynamically at runtime
+
+#### Architecture Changes Summary
+- **New Files Created**:
+  - `lib/auth.ts` - Centralized NextAuth configuration
+  - `app/providers.tsx` - SessionProvider wrapper
+  - `app/alerts/alerts-content.tsx` - Client component with session logic
+- **Modified Files**:
+  - `app/layout.tsx` - Added Providers wrapper
+  - `app/api/auth/[...nextauth]/route.ts` - Simplified to handler exports only
+  - `app/api/alerts/[id]/route.ts` - Async params support
+  - `app/signin/page.tsx` - Suspense boundary
+  - `app/alerts/page.tsx` - Converted to server component wrapper
+  - `server/email.ts` - Updated Brevo SDK
+
+#### Build Verification
+- ✅ All LSP diagnostics resolved
+- ✅ Frontend compiles successfully with no errors
+- ✅ No ESLint violations
+- ✅ All Next.js 15 requirements met
+- ✅ Ready for production deployment
+
 #### Core Dashboard Features
 1. **Live Concurrent API Testing**: GPT-4o Mini & Gemini 2.0 Flash working
 2. **PostgreSQL Persistence**: All test results stored with timestamps
