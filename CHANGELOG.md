@@ -681,12 +681,25 @@
 .
 ├── app/
 │   ├── api/
+│   │   ├── auth/
+│   │   │   └── [...nextauth]/
+│   │   │       └── route.ts      # NextAuth API routes (sign-in, sign-out, session)
+│   │   ├── alerts/
+│   │   │   ├── route.ts          # Alert CRUD API (POST/GET)
+│   │   │   └── test/
+│   │   │       └── route.ts      # Alert test API proxy
 │   │   ├── run-test/
 │   │   │   └── route.ts          # Next.js API proxy for test execution
 │   │   └── history/
 │   │       └── route.ts          # Next.js API proxy for historical data
+│   ├── alerts/
+│   │   ├── page.tsx              # Protected alerts management page
+│   │   └── alert-form.tsx        # Alert creation/edit modal form
+│   ├── signin/
+│   │   └── page.tsx              # Authentication page (email/password + magic link)
 │   ├── page.tsx                  # Main dashboard component
-│   ├── layout.tsx                # Root layout with Inter font
+│   ├── layout.tsx                # Root layout with Inter font + dark mode
+│   ├── icon.png                  # Favicon (Optaimi Spark)
 │   └── globals.css               # Tailwind CSS 4 configuration
 ├── design-system/
 │   └── components/
@@ -696,15 +709,31 @@
 │           ├── card.tsx
 │           ├── button.tsx
 │           ├── sheet.tsx         # Slide-out drawer component
-│           └── checkbox.tsx      # Checkbox component
-├── main.py                       # FastAPI backend with LLM testing
-├── scheduler.py                  # Scheduled deployment script
+│           ├── checkbox.tsx      # Checkbox component
+│           ├── tabs.tsx          # Tabs component (sign-in page)
+│           ├── input.tsx         # Input component
+│           ├── label.tsx         # Label component
+│           └── dialog.tsx        # Dialog component (alert modal)
+├── server/
+│   ├── storage.ts                # Database operations (alerts, email_events, user_settings)
+│   ├── auth-adapter.ts           # NextAuth Drizzle adapter
+│   └── email.ts                  # Brevo email integration
+├── shared/
+│   └── schema.ts                 # Drizzle ORM schema (users, alerts, email_events, etc.)
+├── types/
+│   └── next-auth.d.ts            # NextAuth type extensions (user.id in session)
+├── public/
+│   └── logo.png                  # Optaimi Spark logo
+├── main.py                       # FastAPI backend with LLM testing + alert test endpoint
+├── alert_scheduler.py            # Alert scheduler with CRON authentication
+├── scheduler.py                  # Original scheduled deployment script (deprecated)
+├── drizzle.config.ts             # Drizzle ORM configuration
 ├── package.json                  # Node.js dependencies
-├── next.config.ts               # Next.js configuration
-├── tailwind.config.ts           # Tailwind CSS configuration
-├── tsconfig.json                # TypeScript configuration
-├── replit.md                    # Project documentation
-└── CHANGELOG.md                 # This file
+├── next.config.ts                # Next.js configuration
+├── tailwind.config.ts            # Tailwind CSS configuration
+├── tsconfig.json                 # TypeScript configuration
+├── replit.md                     # Project documentation
+└── CHANGELOG.md                  # This file
 ```
 
 ---
