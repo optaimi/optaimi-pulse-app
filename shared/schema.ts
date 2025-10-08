@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { pgTable, text, varchar, integer, timestamp, numeric, boolean, jsonb, pgEnum, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
-// Replit Auth - Session storage table (MANDATORY)
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -15,19 +15,39 @@ export const sessions = pgTable(
   })
 );
 
-// Replit Auth - User storage table (MANDATORY)
+// User storage table
 export const users = pgTable('users', {
-  id: varchar('id').primaryKey(),
-  email: varchar('email').unique(),
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar('email').unique().notNull(),
+  passwordHash: text('password_hash'),
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  verificationToken: varchar('verification_token'),
+  verificationTokenExpires: timestamp('verification_token_expires'),
+  resetToken: varchar('reset_token'),
+  resetTokenExpires: timestamp('reset_token_expires'),
   firstName: varchar('first_name'),
   lastName: varchar('last_name'),
   profileImageUrl: varchar('profile_image_url'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export type UpsertUser = typeof users.$inferInsert
 export type User = typeof users.$inferSelect
+
+// LLM test results table (used by FastAPI backend)
+export const results = pgTable('results', {
+  id: integer('id').primaryKey().default(sql`nextval('results_id_seq'::regclass)`),
+  ts: timestamp('ts', { withTimezone: true }).defaultNow(),
+  provider: varchar('provider').notNull(),
+  model: varchar('model').notNull(),
+  latencyS: numeric('latency_s'),
+  tps: numeric('tps'),
+  costUsd: numeric('cost_usd'),
+  inTokens: integer('in_tokens'),
+  outTokens: integer('out_tokens'),
+  error: text('error'),
+})
 
 // Alert types enum
 export const alertTypeEnum = pgEnum('alert_type', [
