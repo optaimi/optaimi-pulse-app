@@ -631,6 +631,8 @@
 ## Current System Status
 
 ### ✅ Fully Operational Features
+
+#### Core Dashboard Features
 1. **Live Concurrent API Testing**: GPT-4o Mini & Gemini 2.0 Flash working
 2. **PostgreSQL Persistence**: All test results stored with timestamps
 3. **Historical Data Visualization**: Recharts displaying latency & TPS trends with proper date formatting
@@ -644,16 +646,35 @@
 11. **Selective Model Testing**: Only test enabled models to save API costs
 12. **Blended Cost Calculation**: Cost per million tokens with currency-aware display
 
+#### SaaS Features (Phase 4)
+13. **User Authentication**: NextAuth with email/password + magic link sign-in
+14. **Database Sessions**: 30-day session expiry with automatic cleanup
+15. **Protected Routes**: /alerts page requires authentication
+16. **Alert System**: 5 alert types (latency, TPS drop, cost, error, digest)
+17. **Alert CRUD**: Create, read, update, delete alerts via UI
+18. **Real-time Alert Testing**: Dry-run evaluation before saving
+19. **Email Notifications**: Brevo integration from pulse@optaimi.com
+20. **Alert Scheduler**: Runs every 5 minutes with CRON authentication
+21. **Cadence Enforcement**: Prevents spam with configurable intervals (5m-24h)
+22. **Email Deduplication**: Tracks sent emails to prevent duplicates
+23. **Quiet Hours Support**: User-configurable do-not-disturb periods
+24. **Deployment Ready**: Autoscale + Scheduled deployment configured
+
 ### ⚠️ Known Limitations
 1. **Claude 3.5 Haiku**: Requires Anthropic API credits
 2. **DeepSeek Chat**: Requires DeepSeek API credits (402 error)
+3. **Scheduled Deployment**: Must be configured manually via Replit UI
 
-### 🔧 Environment Setup Required
+### 🔧 Environment Secrets Required
 - `OPENAI_API_KEY` - ✅ Configured
 - `ANTHROPIC_API_KEY` - ✅ Configured (needs credits)
 - `GEMINI_API_KEY` - ✅ Configured
 - `DEEPSEEK_API_KEY` - ✅ Configured (needs credits)
 - `DATABASE_URL` - ✅ Configured (Replit PostgreSQL)
+- `APP_BASE_URL` - ✅ Configured (for magic links)
+- `AUTH_SECRET` - ✅ Configured (NextAuth)
+- `BREVO_API_KEY` - ✅ Configured (email service)
+- `CRON_TOKEN` - ✅ Configured (scheduler auth)
 
 ---
 
@@ -740,20 +761,32 @@
 
 ## Next Steps / Future Enhancements
 
-### Potential Phase 3 Features
-1. **Additional Models**: Add more LLM providers (Cohere, Mistral, etc.)
-2. **Cost Tracking**: Cumulative cost dashboard over time
-3. **Alert System**: Notify when latency exceeds thresholds
-4. **Model Comparison**: Side-by-side performance analysis
-5. **Export Functionality**: Download historical data as CSV/JSON
-6. **Authentication**: User-specific test history and preferences
-7. **Custom Prompts**: Allow users to test with their own prompts
-8. **Real-time Streaming**: WebSocket-based live updates during tests
+### Potential Phase 5 Features
+1. **Additional Models**: Add more LLM providers (Cohere, Mistral, OpenRouter, etc.)
+2. **Cost Tracking Dashboard**: Cumulative cost visualization over time with budget alerts
+3. **Model Comparison View**: Side-by-side performance analysis with diff highlighting
+4. **Export Functionality**: Download historical data as CSV/JSON
+5. **Custom Prompts**: Allow users to test with their own prompts and compare results
+6. **Real-time Streaming**: WebSocket-based live updates during tests
+7. **Team Collaboration**: Share alerts and dashboards with team members
+8. **API Access**: Public API for programmatic access to metrics
+9. **Slack/Discord Integration**: Send alerts to team chat channels
+10. **Advanced Analytics**: Percentile tracking (p50, p95, p99), anomaly detection
+
+### Completed Features (Phase 1-4)
+- ✅ Alert System with 5 alert types
+- ✅ User Authentication (email/password + magic link)
+- ✅ Email Notifications via Brevo
+- ✅ Multi-Currency Support (GBP/USD)
+- ✅ Historical Data Visualization
+- ✅ Selective Model Testing
 
 ### Maintenance Notes
 - Monitor API credit balance for Anthropic and DeepSeek
-- Keep scheduler deployment running for continuous data collection
+- Keep scheduler deployment running for continuous data collection (every 5 minutes)
 - Watch for API schema changes (especially Google GenAI usage fields)
+- Review email delivery metrics in Brevo dashboard
+- Monitor alert cadence effectiveness and adjust as needed
 - Consider adding retry logic for transient API failures
 
 ---
@@ -783,5 +816,5 @@ curl http://localhost:5000/api/run-test
 ---
 
 **Last Updated**: October 8, 2025  
-**Current Version**: Phase 3 Complete (Multi-Currency + Settings UI)  
-**Status**: ✅ Production Ready (2 of 4 models operational, GBP/USD support)
+**Current Version**: Phase 4 Complete (SaaS Transformation)  
+**Status**: ✅ Production Ready - Full SaaS with Authentication, Alerts, and Email Notifications
