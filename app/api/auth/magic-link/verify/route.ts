@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { db } from '@/server/db'
 import { users } from '@/shared/schema'
 import { eq } from 'drizzle-orm'
+import { createSession } from '@/lib/session'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,9 +31,12 @@ export async function GET(request: NextRequest) {
     // Clear the token
     await storage.updateUserVerification(user.id, user.emailVerified)
 
+    // Create secure session
+    const sessionId = await createSession(user.id, user.email!)
+    
     // Set session cookie
     const cookieStore = await cookies()
-    cookieStore.set('user_id', user.id, {
+    cookieStore.set('session_id', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

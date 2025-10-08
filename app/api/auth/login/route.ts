@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { storage } from '@/server/storage'
 import { verifyPassword, isValidEmail } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import { createSession } from '@/lib/session'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,9 +50,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Set session cookie (we'll handle session creation in the middleware)
+    // Create secure session
+    const sessionId = await createSession(user.id, user.email)
+    
+    // Set session cookie
     const cookieStore = await cookies()
-    cookieStore.set('user_id', user.id, {
+    cookieStore.set('session_id', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

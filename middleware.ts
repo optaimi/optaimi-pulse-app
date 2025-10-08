@@ -2,16 +2,18 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('connect.sid')
+  const sessionCookie = request.cookies.get('session_id')
   
   if (!sessionCookie) {
     return NextResponse.redirect(new URL('/signin', request.url))
   }
 
+  // Validate session by calling our auth API
   try {
-    const res = await fetch('http://localhost:3001/api/auth/user', {
+    const apiUrl = new URL('/api/auth/user', request.url)
+    const res = await fetch(apiUrl, {
       headers: {
-        cookie: `connect.sid=${sessionCookie.value}`,
+        cookie: `session_id=${sessionCookie.value}`,
       },
     })
 

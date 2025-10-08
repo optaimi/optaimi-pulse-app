@@ -1,19 +1,27 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { storage } from '@/server/storage'
+import { getSession } from '@/lib/session'
 
 export async function GET() {
   try {
-    // Get user ID from cookie
+    // Get session ID from cookie
     const cookieStore = await cookies()
-    const userIdCookie = cookieStore.get('user_id')
+    const sessionCookie = cookieStore.get('session_id')
     
-    if (!userIdCookie) {
+    if (!sessionCookie) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Validate session
+    const session = await getSession(sessionCookie.value)
+    
+    if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user from database
-    const user = await storage.getUser(userIdCookie.value)
+    const user = await storage.getUser(session.userId)
     
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
