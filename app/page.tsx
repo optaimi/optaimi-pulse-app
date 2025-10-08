@@ -47,12 +47,20 @@ export default function Home() {
   // Load settings from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedModels = localStorage.getItem("pulse.enabledModels")
-      const savedCurrency = localStorage.getItem("pulse.currency")
-      
       const defaultModels = ["gpt-4o-mini", "gemini-2.0-flash-exp"]
-      setEnabledModels(savedModels ? JSON.parse(savedModels) : defaultModels)
-      setCurrency((savedCurrency as Currency) || "GBP")
+      const defaultCurrency = "GBP"
+      
+      try {
+        const savedModels = localStorage.getItem("pulse.enabledModels")
+        const savedCurrency = localStorage.getItem("pulse.currency")
+        
+        setEnabledModels(savedModels ? JSON.parse(savedModels) : defaultModels)
+        setCurrency((savedCurrency as Currency) || defaultCurrency)
+      } catch (error) {
+        console.error("Failed to load settings from localStorage:", error)
+        setEnabledModels(defaultModels)
+        setCurrency(defaultCurrency)
+      }
     }
   }, [])
 

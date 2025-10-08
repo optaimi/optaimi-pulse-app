@@ -6,6 +6,19 @@ Optaimi Pulse is a Next.js 15 dashboard application for real-time performance an
 
 ## Recent Changes (October 8, 2025)
 
+### Brand Identity & UI Polish (PM Session) ✅
+- **Dark Mode Fix**: Added `className="dark"` to html tag in layout.tsx - dark theme now displays correctly by default
+- **Optaimi Spark Branding**: 
+  - Integrated official logo in header (replaced Zap icon with Next.js Image component)
+  - Added favicon (app/icon.png) automatically served by Next.js 15
+  - Logo files: public/logo.png (header), app/icon.png (favicon)
+- **Brand Color Verification**: Added visual token section showing #0F172A (background), #E6E9EF (text), #10B981 (accent) swatches
+- **Critical Backend Fix**: Resolved "coroutine was never awaited" RuntimeWarning
+  - Changed model_tests from eager calls to lambda factories: `lambda: test_openai("gpt-4o-mini")`
+  - Only creates coroutines for selected models, preventing unawaited coroutine leaks
+  - Refresh button now works without warnings
+- **Documentation**: Updated CHANGELOG.md with all PM session changes
+
 ### Phase 3 Implementation Complete ✅
 - **Multi-Currency Support**: GBP/USD toggle with ExchangeRate-API integration (24h caching, 1.5K/month free tier)
 - **Settings Drawer**: Slide-out UI for model selection (checkboxes) and currency preference toggle
