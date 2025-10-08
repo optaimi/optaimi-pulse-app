@@ -1,26 +1,35 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { storage } from '@/server/storage'
 
 export async function GET() {
   try {
-    // Get cookies from Next.js
+    // Get user ID from cookie
     const cookieStore = await cookies()
-    const cookieHeader = cookieStore.toString()
+    const userIdCookie = cookieStore.get('user_id')
     
-    // Proxy to Express auth server
-    const res = await fetch('http://localhost:3001/api/auth/user', {
-      headers: {
-        cookie: cookieHeader,
-      },
-      credentials: 'include',
-    })
-
-    if (!res.ok) {
+    if (!userIdCookie) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await res.json()
-    return NextResponse.json(user)
+    // Get user from database
+    const user = await storage.getUser(userIdCookie.value)
+    
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Return user data (exclude sensitive fields)
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      emailVerified: user.emailVerified,
+      profileImageUrl: user.profileImageUrl,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    })
   } catch (error) {
     console.error('Error fetching user:', error)
     return NextResponse.json({ message: 'Failed to fetch user' }, { status: 500 })
