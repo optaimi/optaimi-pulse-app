@@ -6,7 +6,8 @@
     "dev": "next dev --port 3000 --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start --port 3000 --hostname 0.0.0.0",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@node-rs/bcrypt": "^1.10.7",
@@ -22,6 +23,7 @@
     "lucide-react": "^0.544.0",
     "next": "^15.2.3",
     "next-auth": "^4.24.11",
+    "pg": "^8.16.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.2.1",
