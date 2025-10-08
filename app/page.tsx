@@ -155,18 +155,18 @@ export default function Home() {
     
     if (totalTokens === 0) return null
     
-    // If cost is 0 or undefined but we have tokens, check fallback pricing
-    if ((!cost || cost === 0) && totalTokens > 0) {
+    // If cost is undefined or null but we have tokens, check fallback pricing
+    if ((cost === null || cost === undefined) && totalTokens > 0) {
       const modelKey = Object.keys(FALLBACK_PRICING).find(key => result.display_name?.toLowerCase().includes('gemini'))
       if (modelKey) {
         const pricing = FALLBACK_PRICING[modelKey]
         const costUsd = ((result.in_tokens * pricing.input_per_mtok) + (result.out_tokens * pricing.output_per_mtok)) / 1_000_000
-        // For free models, return 0 explicitly
         cost = costUsd
       }
     }
     
-    if (!cost) return null
+    // Allow 0 cost (free models) - only return null if truly undefined/null
+    if (cost === null || cost === undefined) return null
     return (cost / totalTokens) * 1_000_000
   }
 
