@@ -9,6 +9,7 @@ NEXT_TELEMETRY_DISABLED = "1"
 
 [agent]
 expertMode = true
+integrations = ["javascript_log_in_with_replit:1.0.0"]
 
 [[ports]]
 localPort = 3000
