@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, DollarSign, Gauge } from "lucide-react"
 import { SettingsDrawer } from "@/components/SettingsDrawer"
+import { useAuth } from "@/app/hooks/useAuth"
 
 const PerformanceChart = dynamic(() => import("@/components/PerformanceChart"), {
   ssr: false,
@@ -37,12 +39,21 @@ type TimeRange = '24h' | '7d' | '30d'
 type Currency = 'GBP' | 'USD'
 
 export default function Home() {
+  const router = useRouter()
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<ModelResult[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>('24h')
   const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({})
   const [enabledModels, setEnabledModels] = useState<string[]>([])
   const [currency, setCurrency] = useState<Currency>("GBP")
+
+  // Redirect to signin if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      window.location.href = '/signin'
+    }
+  }, [authLoading, isAuthenticated])
 
   // Load settings from localStorage on mount
   useEffect(() => {
