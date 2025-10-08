@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Zap, RefreshCw, TrendingUp, DollarSign, Gauge } from "lucide-react"
+import { SettingsDrawer } from "@/components/SettingsDrawer"
 
 const PerformanceChart = dynamic(() => import("@/components/PerformanceChart"), {
   ssr: false,
@@ -16,29 +17,57 @@ interface ModelResult {
   latency_s: number
   tps: number
   cost_usd: number
+  cost_gbp: number
+  in_tokens: number
+  out_tokens: number
   error?: string
 }
 
 interface HistoryPoint {
-  timestamp: string
+  ts_ms: number
   latency_s: number
   tps: number
   cost_usd: number
+  in_tokens: number
+  out_tokens: number
 }
 
 type TimeRange = '24h' | '7d' | '30d'
+type Currency = 'GBP' | 'USD'
 
 export default function Home() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<ModelResult[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>('24h')
   const [historyData, setHistoryData] = useState<Record<string, HistoryPoint[]>>({})
+  const [enabledModels, setEnabledModels] = useState<string[]>([])
+  const [currency, setCurrency] = useState<Currency>("GBP")
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedModels = localStorage.getItem("pulse.enabledModels")
+      const savedCurrency = localStorage.getItem("pulse.currency")
+      
+      const defaultModels = ["gpt-4o-mini", "gemini-2.0-flash-exp"]
+      setEnabledModels(savedModels ? JSON.parse(savedModels) : defaultModels)
+      setCurrency((savedCurrency as Currency) || "GBP")
+    }
+  }, [])
 
   const handleRefresh = async () => {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/run-test');
+      // POST request with selected models and currency
+      const response = await fetch('/api/run-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          models: enabledModels,
+          currency: currency
+        })
+      });
       const data = await response.json();
 
       if (data.results) {
@@ -55,8 +84,8 @@ export default function Home() {
 
   const fetchHistory = async () => {
     try {
-      const models = ['gpt-4o-mini', 'claude-3-5-haiku-20241022', 'gemini-2.0-flash-exp', 'deepseek-chat']
-      const historyPromises = models.map(async (model) => {
+      // Fetch history for enabled models only
+      const historyPromises = enabledModels.map(async (model) => {
         const response = await fetch(`/api/history?model=${model}&range=${timeRange}`)
         const data = await response.json()
         return { model, history: data.history || [] }
@@ -77,19 +106,50 @@ export default function Home() {
     if (results.length > 0) {
       fetchHistory()
     }
-  }, [timeRange])
+  }, [timeRange, enabledModels])
 
-  const avgLatency = results.length > 0 
-    ? (results.reduce((sum, r) => sum + (r.error ? 0 : r.latency_s), 0) / results.filter(r => !r.error).length).toFixed(2)
+  const handleSettingsChange = (settings: { enabledModels: string[]; currency: string }) => {
+    setEnabledModels(settings.enabledModels)
+    setCurrency(settings.currency as Currency)
+  }
+
+  // Format currency helper
+  const formatCurrency = (amount: number | null | undefined, curr: Currency = currency): string => {
+    if (amount === null || amount === undefined) return '---'
+    
+    const formatter = new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: curr,
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 6,
+    })
+    return formatter.format(amount)
+  }
+
+  // Calculate blended cost per Mtok
+  const calculateBlendedCostPerMtok = (result: ModelResult): number | null => {
+    if (!result.cost_usd || !result.in_tokens || !result.out_tokens) return null
+    const totalTokens = result.in_tokens + result.out_tokens
+    if (totalTokens === 0) return null
+    return (result.cost_usd / totalTokens) * 1_000_000
+  }
+
+  // Average metrics calculations
+  const validResults = results.filter(r => !r.error)
+  
+  const avgLatency = validResults.length > 0
+    ? (validResults.reduce((sum, r) => sum + r.latency_s, 0) / validResults.length).toFixed(2)
     : '---'
   
-  const avgTPS = results.length > 0
-    ? (results.reduce((sum, r) => sum + (r.error ? 0 : r.tps), 0) / results.filter(r => !r.error).length).toFixed(0)
+  const avgTPS = validResults.length > 0
+    ? (validResults.reduce((sum, r) => sum + r.tps, 0) / validResults.length).toFixed(0)
     : '---'
   
-  const avgCost = results.length > 0
-    ? (results.reduce((sum, r) => sum + (r.error ? 0 : r.cost_usd), 0) / results.filter(r => !r.error).length).toFixed(4)
-    : '---'
+  // Avg cost per Mtok (blended across all models)
+  const blendedCosts = validResults.map(r => calculateBlendedCostPerMtok(r)).filter(c => c !== null) as number[]
+  const avgCostPerMtok = blendedCosts.length > 0
+    ? blendedCosts.reduce((sum, c) => sum + c, 0) / blendedCosts.length
+    : null
 
   return (
     <div className="min-h-screen p-6 bg-background">
@@ -107,14 +167,17 @@ export default function Home() {
                 </CardDescription>
               </div>
               <CardAction>
-                <Button 
-                  onClick={handleRefresh} 
-                  disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <RefreshCw className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
-                  {loading ? 'Testing...' : 'Refresh'}
-                </Button>
+                <div className="flex gap-2">
+                  <SettingsDrawer onSettingsChange={handleSettingsChange} />
+                  <Button 
+                    onClick={handleRefresh} 
+                    disabled={loading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <RefreshCw className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Testing...' : 'Refresh'}
+                  </Button>
+                </div>
               </CardAction>
             </div>
           </CardHeader>
@@ -155,7 +218,9 @@ export default function Home() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">${avgCost}</div>
+                  <div className="text-3xl font-bold tabular-nums">
+                    {avgCostPerMtok !== null ? formatCurrency(avgCostPerMtok, currency) : '---'}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -217,7 +282,7 @@ export default function Home() {
                             {result.error ? '---' : result.tps.toFixed(0)}
                           </td>
                           <td className="text-right py-3 px-4 tabular-nums">
-                            {result.error ? '---' : `$${result.cost_usd.toFixed(4)}`}
+                            {result.error ? '---' : formatCurrency(calculateBlendedCostPerMtok(result), currency)}
                           </td>
                         </tr>
                       ))}
