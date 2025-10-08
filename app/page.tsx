@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
+import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Zap, RefreshCw, TrendingUp, DollarSign, Gauge } from "lucide-react"
+import { RefreshCw, TrendingUp, DollarSign, Gauge } from "lucide-react"
 import { SettingsDrawer } from "@/components/SettingsDrawer"
 
 const PerformanceChart = dynamic(() => import("@/components/PerformanceChart"), {
@@ -159,9 +160,14 @@ export default function Home() {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="flex items-center gap-2 text-3xl font-bold">
-                  <Zap className="size-8 text-emerald-500" />
-                  Optaimi Pulse
+                <CardTitle className="flex items-center gap-3 text-3xl font-bold">
+                  <Image 
+                    src="/logo.png" 
+                    alt="Optaimi Spark Logo" 
+                    width={200} 
+                    height={60}
+                    className="h-12 w-auto"
+                  />
                 </CardTitle>
                 <CardDescription className="text-base mt-1">
                   Real-time performance and cost analysis of leading LLMs
