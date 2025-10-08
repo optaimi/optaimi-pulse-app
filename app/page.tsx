@@ -143,12 +143,30 @@ export default function Home() {
     return formatter.format(amount)
   }
 
+  // Fallback pricing table (cost per million tokens) for models that return $0
+  const FALLBACK_PRICING: Record<string, { input_per_mtok: number; output_per_mtok: number }> = {
+    'gemini-2.0-flash-exp': { input_per_mtok: 0, output_per_mtok: 0 }, // Gemini Flash is free
+  }
+
   // Calculate blended cost per Mtok (respects selected currency)
   const calculateBlendedCostPerMtok = (result: ModelResult, curr: Currency = currency): number | null => {
-    const cost = curr === 'GBP' ? result.cost_gbp : result.cost_usd
-    if (!cost || !result.in_tokens || !result.out_tokens) return null
+    let cost = curr === 'GBP' ? result.cost_gbp : result.cost_usd
     const totalTokens = result.in_tokens + result.out_tokens
+    
     if (totalTokens === 0) return null
+    
+    // If cost is 0 or undefined but we have tokens, check fallback pricing
+    if ((!cost || cost === 0) && totalTokens > 0) {
+      const modelKey = Object.keys(FALLBACK_PRICING).find(key => result.display_name?.toLowerCase().includes('gemini'))
+      if (modelKey) {
+        const pricing = FALLBACK_PRICING[modelKey]
+        const costUsd = ((result.in_tokens * pricing.input_per_mtok) + (result.out_tokens * pricing.output_per_mtok)) / 1_000_000
+        // For free models, return 0 explicitly
+        cost = costUsd
+      }
+    }
+    
+    if (!cost) return null
     return (cost / totalTokens) * 1_000_000
   }
 
