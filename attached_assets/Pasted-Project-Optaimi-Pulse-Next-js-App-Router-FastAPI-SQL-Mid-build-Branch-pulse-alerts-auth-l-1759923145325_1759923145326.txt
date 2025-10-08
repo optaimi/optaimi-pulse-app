@@ -1,0 +1,61 @@
+Project: Optaimi Pulse (Next.js App Router + FastAPI + SQL). Mid-build.
+Branch: pulse/alerts-auth-landing
+Mode: Build. Small, atomic commits. Use Replit Workflows, Secrets, Scheduled Deployments, and logs (docs.replit.com).
+
+GOALS
+A) User auth (email+password OR magic-link), user-only scope.
+B) Alerting system (latency/TPS/cost/error + digest) with user-defined thresholds + cadence (5m, 15m, 1h, 4h, 12h, 24h).
+C) Transactional email via Brevo (sender: pulse@optaimi.com).
+D) Marketing landing page using reactbits.dev components.
+
+SECRETS (create/read)
+- AUTH_SECRET
+- DATABASE_URL (existing)
+- BREVO_API_KEY  (https://developers.brevo.com/)
+- APP_BASE_URL (e.g., dev URL)
+- CRON_TOKEN (shared secret for scheduled checks)
+
+DATA MODEL (SQL, reuse current DB)
+- users(id pk, email uniq, password_hash null, created_at)
+- sessions(id, user_id, expires_at)
+- alerts(id pk, user_id fk, type ENUM('latency','tps_drop','cost_mtok','error','digest'),
+         model TEXT, threshold NUMERIC, window ENUM('7d','24h'),
+         cadence ENUM('5m','15m','1h','4h','12h','24h'), active BOOL, created_at)
+- user_settings(user_id pk, currency DEFAULT 'GBP', quiet_hours JSONB NULL)
+- email_events(id, user_id, alert_id, sent_at, status, payload JSONB)
+
+AUTH (NextAuth/Auth.js)
+- Email/password + magic-link providers.
+- Pages: /signin, /signup, /logout; protect /dashboard.
+- Store sessions in Postgres. CSRF enabled.
+
+ALERT ENGINE
+- New FastAPI route POST /api/alerts/test (protected) to dry-run conditions.
+- New Next API route /api/alerts (CRUD; protected).
+- Scheduler: `python scheduler.py --cron ${CRON_TOKEN}` every 5 minutes.
+  - For each active alert whose cadence divides “now”, compute metric from recent results:
+    • latency > X sec (per-model)
+    • tps drop > Y% vs 7-day avg (per-model)
+    • cost_per_mtok > Z (per-model), using USD base + cached USD→GBP
+    • error: N consecutive failures
+  - If breached and not re-sent within cadence window, send email via Brevo.
+
+BREVO EMAIL
+- Minimal client (requests) with API key from Secrets.
+- Templates: Alert Triggered + Daily Digest. Include model, metric, value, threshold, ts, link to dashboard.
+- From: pulse@optaimi.com. Record to email_events.
+
+FRONTEND
+- Add /alerts page (protected): create/edit alerts (type, model, threshold, window, cadence, active).
+- Use reactbits.dev for a marketing landing at / (Hero, Features, CTA → sign-up).
+- Header: “Get started” → /signup.
+
+VALIDATION
+- Sign up, sign in, create an alert, scheduler sends a Brevo email on breach (check logs).
+- Alerts respect cadence; no duplicate emails within the window.
+- Landing renders with reactbits components and passes basic a11y.
+
+NOTES / GUARDRAILS
+- Keep USD as source of truth; convert for display only.
+- Quiet hours: if provided, defer emails but log breaches.
+- Rate-limit alert processing per user to avoid email floods.
