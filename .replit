@@ -71,5 +71,5 @@ outputType = "console"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 & npm run start -- --port 5000 & wait"]
+run = ["npm", "run", "start", "--", "--port", "5000"]
 build = ["npm", "run", "build"]
