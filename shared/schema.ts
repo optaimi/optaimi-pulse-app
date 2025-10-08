@@ -1,32 +1,27 @@
-import { sql } from 'drizzle-orm'
-import { pgTable, text, varchar, integer, timestamp, numeric, boolean, jsonb, pgEnum, index } from 'drizzle-orm/pg-core'
+import { pgTable, text, serial, integer, timestamp, numeric, boolean, jsonb, pgEnum } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
-// Replit Auth - Session storage table (MANDATORY for Replit Auth)
-// Referenced from blueprint: javascript_log_in_with_replit
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => ({
-    expireIdx: index("IDX_session_expire").on(table.expire),
-  })
-);
-
-// Replit Auth - User storage table (MANDATORY for Replit Auth)
-// Referenced from blueprint: javascript_log_in_with_replit
-// Note: Keeping default() for migration compatibility as per blueprint guidelines
+// Users table
 export const users = pgTable('users', {
-  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar('email').unique(),
-  firstName: varchar('first_name'),
-  lastName: varchar('last_name'),
-  profileImageUrl: varchar('profile_image_url'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  emailVerified: timestamp('email_verified'),
+  passwordHash: text('password_hash'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Sessions table for NextAuth
+export const sessions = pgTable('sessions', {
+  sessionToken: text('session_token').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires').notNull(),
+})
+
+// Verification tokens table for NextAuth magic-link
+export const verificationTokens = pgTable('verification_tokens', {
+  identifier: text('identifier').notNull(),
+  token: text('token').notNull().unique(),
+  expires: timestamp('expires').notNull(),
 })
 
 // Alert types enum
@@ -51,10 +46,10 @@ export const cadenceEnum = pgEnum('cadence', [
   '24h',
 ])
 
-// Alerts table - Updated to use varchar user_id for Replit Auth
+// Alerts table
 export const alerts = pgTable('alerts', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type: alertTypeEnum('type').notNull(),
   model: text('model'),
   threshold: numeric('threshold'),
@@ -64,32 +59,36 @@ export const alerts = pgTable('alerts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// User settings table - Updated to use varchar user_id for Replit Auth
+// User settings table
 export const userSettings = pgTable('user_settings', {
-  userId: varchar('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   currency: text('currency').default('GBP').notNull(),
   quietHours: jsonb('quiet_hours'),
 })
 
-// Email events table - Updated to use varchar user_id for Replit Auth
+// Email events table
 export const emailEvents = pgTable('email_events', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   alertId: integer('alert_id').references(() => alerts.id, { onDelete: 'set null' }),
   sentAt: timestamp('sent_at').defaultNow().notNull(),
   status: text('status').notNull(),
   payload: jsonb('payload'),
 })
 
-// Types for Replit Auth (from blueprint)
-export type UpsertUser = typeof users.$inferInsert
-export type User = typeof users.$inferSelect
-
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
+  sessions: many(sessions),
   alerts: many(alerts),
   settings: one(userSettings),
   emailEvents: many(emailEvents),
+}))
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }))
 
 export const alertsRelations = relations(alerts, ({ one, many }) => ({
