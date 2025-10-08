@@ -1,0 +1,52 @@
+Project: Optaimi Pulse (Next.js 15 + FastAPI). Mid-build.
+Branch: pulse/fix-charts-cost-cleanup
+Mode: Build. Small, atomic commits. Use Replit logs & Workflows.
+
+GOALS
+1) Remove “Brand Token Verification” section from the dashboard. (Leftover debug UI.)  :contentReference[oaicite:0]{index=0}
+2) Fix charts:
+   - X-axis shows exactly 12 evenly spaced ticks for any selected range (24h/7d/30d).
+   - Lines render continuous per model (no gaps when neighbouring points exist).
+3) Fix “Avg Cost / Mtok” so Gemini Flash displays correctly.
+
+TASKS
+A) Remove debug section
+- Edit `app/page.tsx`: delete the token-verification block and any related styles/components.  :contentReference[oaicite:1]{index=1}
+
+B) Charts: 12 fixed intervals + continuous lines
+- In `design-system/components/PerformanceChart.tsx`:
+  1) Ensure `ts_ms` is a number (epoch ms). Already returned by history.  :contentReference[oaicite:2]{index=2}
+  2) Compute 12 ticks:
+     ```ts
+     const [min,max] = extent(history, d=>d.ts_ms) as [number,number];
+     const step = (max - min) / 11;
+     const ticks = Array.from({length:12},(_,i)=>Math.round(min + i*step));
+     ```
+  3) Use numeric axis with fixed ticks and time formatter:
+     ```tsx
+     <XAxis type="number" dataKey="ts_ms" ticks={ticks}
+            domain={[ticks[0], ticks[11]]}
+            tickFormatter={(t)=>new Date(t).toLocaleString()} />
+     ```
+  4) Make lines continuous over sparse data:
+     - Group series by `model` before passing to `LineChart`.
+     - Set `<Line connectNulls strokeWidth={2} ... />`.
+
+C) Avg Cost / Mtok (Gemini Flash)
+- In `app/page.tsx`:
+  1) Keep blended calc: `(cost / ((in_tokens+out_tokens)/1e6))`.
+  2) If `cost_*` is 0/undefined but tokens > 0, fallback to a static price table for that model (Gemini Flash) so the tile isn’t blank:
+     ```ts
+     const PRICE = { "gemini-2.0-flash": { in: /* $/Mtok_in */, out: /* $/Mtok_out */ } };
+     const estCostUsd = ((in_tokens*PRICE[model].in)+(out_tokens*PRICE[model].out))/1e6;
+     ```
+  3) Apply currency at display time (GBP default from settings).  :contentReference[oaicite:3]{index=3}
+
+VALIDATION
+- Dashboard no longer shows the token-verification block.
+- Each chart’s X-axis renders 12 ticks spanning the range; lines are continuous.
+- “Avg Cost / Mtok” shows a non-blank value for Gemini Flash when tokens > 0.
+
+Notes
+- Do not change workflows/deploys.
+- Keep existing settings drawer behaviour and currency logic (GBP default).
