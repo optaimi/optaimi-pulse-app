@@ -3,9 +3,19 @@ import { alerts, userSettings, emailEvents, users, type User, type UpsertUser } 
 import { eq, and, desc } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 
-// User operations (REQUIRED for Replit Auth)
+// User operations
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id))
+  return user
+}
+
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.email, email))
+  return user
+}
+
+export async function createUser(userData: UpsertUser): Promise<User> {
+  const [user] = await db.insert(users).values(userData).returning()
   return user
 }
 
@@ -48,6 +58,60 @@ export async function upsertUser(userData: UpsertUser): Promise<User> {
         updatedAt: new Date(),
       },
     })
+    .returning()
+  return user
+}
+
+export async function updateUserVerification(userId: string, verified: boolean): Promise<User> {
+  const [user] = await db
+    .update(users)
+    .set({
+      emailVerified: verified,
+      verificationToken: null,
+      verificationTokenExpires: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning()
+  return user
+}
+
+export async function setVerificationToken(userId: string, token: string, expires: Date): Promise<User> {
+  const [user] = await db
+    .update(users)
+    .set({
+      verificationToken: token,
+      verificationTokenExpires: expires,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning()
+  return user
+}
+
+export async function setResetToken(userId: string, token: string, expires: Date): Promise<User> {
+  const [user] = await db
+    .update(users)
+    .set({
+      resetToken: token,
+      resetTokenExpires: expires,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning()
+  return user
+}
+
+export async function updateUserPassword(userId: string, passwordHash: string): Promise<User> {
+  const [user] = await db
+    .update(users)
+    .set({
+      passwordHash,
+      resetToken: null,
+      resetTokenExpires: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
     .returning()
   return user
 }
@@ -180,10 +244,16 @@ export async function getEmailEventsByUserId(userId: string, limit = 50) {
   })
 }
 
-// Export storage object for Replit Auth integration
+// Export storage object
 export const storage = {
   getUser,
+  getUserByEmail,
+  createUser,
   upsertUser,
+  updateUserVerification,
+  setVerificationToken,
+  setResetToken,
+  updateUserPassword,
   createAlert,
   getAlertsByUserId,
   getAlertById,
