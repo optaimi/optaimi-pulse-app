@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any, List
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -16,6 +16,10 @@ import google.generativeai as genai
 import httpx
 
 app = FastAPI()
+
+# Currency conversion cache (24 hour TTL)
+_fx_cache = {"rate": None, "timestamp": None}
+FX_CACHE_TTL_HOURS = 24
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +77,57 @@ def calc_cost(model: str, in_tokens: int, out_tokens: int) -> float:
     input_cost = (in_tokens / 1_000_000) * pricing["input"]
     output_cost = (out_tokens / 1_000_000) * pricing["output"]
     return input_cost + output_cost
+
+
+async def get_usd_to_gbp_rate() -> float:
+    """
+    Get USD to GBP exchange rate from ExchangeRate-API.
+    Caches result for 24 hours to stay within free tier limits.
+    """
+    global _fx_cache
+    
+    # Check cache validity
+    if _fx_cache["rate"] and _fx_cache["timestamp"]:
+        age = datetime.now() - _fx_cache["timestamp"]
+        if age < timedelta(hours=FX_CACHE_TTL_HOURS):
+            return _fx_cache["rate"]
+    
+    # Fetch fresh rate
+    api_key = os.environ.get("EXCHANGERATE_API_KEY")
+    if not api_key:
+        print("Warning: EXCHANGERATE_API_KEY not set, using fallback rate 0.79")
+        return 0.79  # Fallback rate
+    
+    try:
+        url = f"https://v6.exchangerate-api.com/v6/{api_key}/pair/USD/GBP"
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            data = response.json()
+            
+            if data.get("result") == "success":
+                rate = data.get("conversion_rate")
+                # Update cache
+                _fx_cache["rate"] = rate
+                _fx_cache["timestamp"] = datetime.now()
+                print(f"Fetched fresh USD/GBP rate: {rate}")
+                return rate
+            else:
+                print(f"ExchangeRate-API error: {data.get('error-type', 'unknown')}")
+                return 0.79  # Fallback
+    except Exception as e:
+        print(f"Error fetching exchange rate: {e}")
+        return 0.79  # Fallback
+
+
+async def convert_currency(amount_usd: float, target_currency: str) -> float:
+    """Convert USD amount to target currency (GBP or USD)"""
+    if target_currency == "USD":
+        return amount_usd
+    elif target_currency == "GBP":
+        rate = await get_usd_to_gbp_rate()
+        return amount_usd * rate
+    else:
+        return amount_usd  # Default to USD
 
 
 async def test_openai(model: str = "gpt-4o-mini") -> Dict[str, Any]:
@@ -304,27 +359,54 @@ def insert_result(result: Dict[str, Any]) -> None:
         print(f"Error inserting result: {e}")
 
 
-@app.get("/api/run-test")
-async def run_test():
-    """Run concurrent tests on all LLM models"""
-    # Execute all tests concurrently using asyncio.gather
-    results = await asyncio.gather(
-        test_openai("gpt-4o-mini"),
-        test_anthropic("claude-3-5-haiku-20241022"),
-        test_gemini("gemini-2.0-flash-exp"),
-        test_deepseek("deepseek-chat"),
-        return_exceptions=True
-    )
+@app.post("/api/run-test")
+@app.get("/api/run-test")  # Keep GET for backwards compatibility
+async def run_test(request: Request = None):
+    """Run concurrent tests on selected LLM models with currency conversion"""
+    # Parse request body for POST requests
+    selected_models = None
+    currency = "GBP"  # Default to GBP
     
-    # Filter out exceptions and insert into database
+    if request and request.method == "POST":
+        try:
+            body = await request.json()
+            selected_models = body.get("models")
+            currency = body.get("currency", "GBP")
+        except:
+            pass  # Use defaults if body parsing fails
+    
+    # Model test functions mapping
+    model_tests = {
+        "gpt-4o-mini": test_openai("gpt-4o-mini"),
+        "claude-3-5-haiku-20241022": test_anthropic("claude-3-5-haiku-20241022"),
+        "gemini-2.0-flash-exp": test_gemini("gemini-2.0-flash-exp"),
+        "deepseek-chat": test_deepseek("deepseek-chat"),
+    }
+    
+    # If specific models selected, only test those
+    if selected_models:
+        tests_to_run = [model_tests[m] for m in selected_models if m in model_tests]
+    else:
+        tests_to_run = list(model_tests.values())
+    
+    # Execute tests concurrently
+    results = await asyncio.gather(*tests_to_run, return_exceptions=True)
+    
+    # Filter out exceptions, add currency conversion, and insert into database
     valid_results = []
     for result in results:
         if isinstance(result, dict):
+            # Add cost_gbp field
+            if result.get("cost_usd") is not None:
+                result["cost_gbp"] = round(await convert_currency(result["cost_usd"], "GBP"), 6)
+            else:
+                result["cost_gbp"] = None
+            
             valid_results.append(result)
             # Insert into database asynchronously
             await asyncio.to_thread(insert_result, result)
     
-    return {"results": valid_results}
+    return {"results": valid_results, "currency": currency}
 
 
 @app.get("/api/history")
@@ -372,8 +454,11 @@ async def get_history(
         # Convert to list of dicts with proper formatting
         history = []
         for row in rows:
+            # Convert timestamp to epoch milliseconds for charts
+            ts_ms = int(row["ts"].timestamp() * 1000) if row["ts"] else None
+            
             history.append({
-                "ts": row["ts"].isoformat(),
+                "ts_ms": ts_ms,
                 "provider": row["provider"],
                 "model": row["model"],
                 "latency_s": float(row["latency_s"]) if row["latency_s"] else None,
