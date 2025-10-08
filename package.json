@@ -33,7 +33,6 @@
     "lucide-react": "^0.544.0",
     "memoizee": "^0.4.17",
     "next": "^15.2.3",
-    "next-auth": "^4.24.11",
     "openid-client": "^6.8.1",
     "passport": "^0.7.0",
     "pg": "^8.16.3",

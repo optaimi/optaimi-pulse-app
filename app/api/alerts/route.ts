@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../../lib/auth'
-import { createAlert, getAlertsByUserId } from '../../../server/storage'
+import { createAlert, getAlertsByUserId, getUserFromRequest } from '../../../server/storage'
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const user = await getUserFromRequest()
   
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const alerts = await getAlertsByUserId(parseInt(session.user.id))
+    const alerts = await getAlertsByUserId(user.id)
     return NextResponse.json(alerts)
   } catch (error) {
     console.error('Error fetching alerts:', error)
@@ -23,9 +21,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const user = await getUserFromRequest()
   
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -68,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const alert = await createAlert({
-      userId: parseInt(session.user.id),
+      userId: user.id,
       type,
       model: model || undefined,
       threshold: threshold || undefined,

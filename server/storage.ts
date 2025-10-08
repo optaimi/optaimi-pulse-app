@@ -1,11 +1,40 @@
 import { db } from './db'
 import { alerts, userSettings, emailEvents, users, type User, type UpsertUser } from '../shared/schema'
 import { eq, and, desc } from 'drizzle-orm'
+import { cookies } from 'next/headers'
 
 // User operations (REQUIRED for Replit Auth)
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id))
   return user
+}
+
+export async function getUserFromRequest(): Promise<User | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('connect.sid')
+    
+    if (!sessionCookie) {
+      return null
+    }
+
+    // Proxy to Express auth server to get current user
+    const res = await fetch('http://localhost:3001/api/auth/user', {
+      headers: {
+        cookie: `connect.sid=${sessionCookie.value}`,
+      },
+    })
+
+    if (!res.ok) {
+      return null
+    }
+
+    const userData = await res.json()
+    return userData
+  } catch (error) {
+    console.error('Error fetching user from request:', error)
+    return null
+  }
 }
 
 export async function upsertUser(userData: UpsertUser): Promise<User> {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '../hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +38,7 @@ const CADENCE_LABELS = {
 }
 
 export function AlertsContent() {
-  const { data: session, status } = useSession()
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const router = useRouter()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,16 +46,16 @@ export function AlertsContent() {
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !isAuthenticated) {
       router.push('/signin')
     }
-  }, [status, router])
+  }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (isAuthenticated) {
       fetchAlerts()
     }
-  }, [status])
+  }, [isAuthenticated])
 
   const fetchAlerts = async () => {
     try {
@@ -115,7 +115,7 @@ export function AlertsContent() {
     fetchAlerts()
   }
 
-  if (status === 'loading' || loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
         <p>Loading...</p>

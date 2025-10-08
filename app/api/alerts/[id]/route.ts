@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../../../lib/auth'
 import {
   getAlertById,
   updateAlert,
   deleteAlert,
+  getUserFromRequest,
 } from '../../../../server/storage'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
+  const user = await getUserFromRequest()
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -27,7 +26,7 @@ export async function GET(
       )
     }
 
-    const alert = await getAlertById(alertId, parseInt(session.user.id))
+    const alert = await getAlertById(alertId, user.id)
 
     if (!alert) {
       return NextResponse.json({ error: 'Alert not found' }, { status: 404 })
@@ -47,9 +46,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
+  const user = await getUserFromRequest()
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -106,7 +105,7 @@ export async function PATCH(
 
     const alert = await updateAlert(
       alertId,
-      parseInt(session.user.id),
+      user.id,
       updateData
     )
 
@@ -128,9 +127,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
+  const user = await getUserFromRequest()
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -144,7 +143,7 @@ export async function DELETE(
       )
     }
 
-    const alert = await deleteAlert(alertId, parseInt(session.user.id))
+    const alert = await deleteAlert(alertId, user.id)
 
     if (!alert) {
       return NextResponse.json({ error: 'Alert not found' }, { status: 404 })

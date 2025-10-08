@@ -6,6 +6,18 @@ Optaimi Pulse is a Next.js 15 dashboard application for real-time performance an
 
 ## Recent Changes (October 8, 2025)
 
+### Replit Auth Migration ✅
+- **Authentication System**: Migrated from NextAuth to Replit Auth to fix email delivery issues
+- **New Express Auth Server**: Added `server/auth-server.ts` on port 3001 for OAuth flow
+- **Database Schema Update**: Changed user IDs from integer to varchar (Replit Auth requirement)
+- **Database Wipe**: All tables recreated with new schema (test data wiped, user confirmed safe)
+- **Updated Components**: All auth-related pages and API routes now use Replit Auth
+- **Removed NextAuth**: Uninstalled next-auth package and removed all NextAuth code
+- **New Auth Hook**: Created `app/hooks/useAuth.ts` for React authentication state
+- **Sign In/Sign Up Pages**: Simplified to "Continue with Replit" buttons
+- **Middleware**: Updated to check Replit Auth sessions instead of NextAuth
+- **See**: REPLIT_AUTH_MIGRATION.md for full migration details
+
 ### Brand Identity & UI Polish (PM Session) ✅
 - **Dark Mode Fix**: Added `className="dark"` to html tag in layout.tsx - dark theme now displays correctly by default
 - **Optaimi Spark Branding**: 
