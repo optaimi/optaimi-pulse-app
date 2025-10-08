@@ -9,7 +9,7 @@ import {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -18,7 +18,8 @@ export async function GET(
   }
 
   try {
-    const alertId = parseInt(params.id)
+    const { id } = await params
+    const alertId = parseInt(id)
     if (isNaN(alertId)) {
       return NextResponse.json(
         { error: 'Invalid alert ID' },
@@ -44,7 +45,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -53,7 +54,8 @@ export async function PATCH(
   }
 
   try {
-    const alertId = parseInt(params.id)
+    const { id } = await params
+    const alertId = parseInt(id)
     if (isNaN(alertId)) {
       return NextResponse.json(
         { error: 'Invalid alert ID' },
@@ -124,7 +126,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -133,7 +135,8 @@ export async function DELETE(
   }
 
   try {
-    const alertId = parseInt(params.id)
+    const { id } = await params
+    const alertId = parseInt(id)
     if (isNaN(alertId)) {
       return NextResponse.json(
         { error: 'Invalid alert ID' },
