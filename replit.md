@@ -30,8 +30,10 @@ The application features an internal database-based authentication system, migra
 *   **Historical Charts**: Uses Recharts for visualizing latency and tokens/sec trends with time-range filtering (24h/7d/30d).
 *   **Real-time Metrics**: Displays average latency, TPS, and cost in summary tiles.
 *   **Scheduled Testing**: `scheduler.py` configures automated 15-minute testing intervals.
-*   **Branding**: Integrated "Optaimi Spark" branding with official logo and favicon.
+*   **Branding**: Integrated "Optaimi Spark" branding with official logo and favicon applied to both landing page and dashboard.
 *   **Alert Settings Navigation**: Dashboard header includes Bell icon button linking to `/alerts` page for alert configuration.
+*   **Auto-Refresh System**: Dashboard automatically refreshes LLM performance data every 2 hours for all enabled models to ensure historical charts remain up-to-date.
+*   **User Session Management**: Logout button in dashboard header terminates session and redirects to sign-in page with error handling.
 
 ### Deployment Configuration
 
