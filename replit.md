@@ -31,6 +31,14 @@ The application features an internal database-based authentication system, migra
 *   **Real-time Metrics**: Displays average latency, TPS, and cost in summary tiles.
 *   **Scheduled Testing**: `scheduler.py` configures automated 15-minute testing intervals.
 *   **Branding**: Integrated "Optaimi Spark" branding with official logo and favicon.
+*   **Alert Settings Navigation**: Dashboard header includes Bell icon button linking to `/alerts` page for alert configuration.
+
+### Deployment Configuration
+
+*   **Production Deployment**: Autoscale deployment running both frontend (Next.js on port 5000) and backend (FastAPI on port 8000) in the same container.
+*   **Run Command**: `uvicorn main:app --host 0.0.0.0 --port 8000 & npm run start -- --port 5000 & wait`
+*   **Build Command**: `npm run build`
+*   **Critical**: Both services must run together in production for the application to function correctly. The frontend proxies all backend requests.
 
 ## External Dependencies
 
