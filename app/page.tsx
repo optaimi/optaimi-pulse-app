@@ -11,7 +11,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="h-6 w-6 text-emerald-500" />
-            <span className="text-xl font-bold">Optaimi Pulse</span>
+            <span className="text-xl font-bold">Optaimi is Pulse</span>
           </div>
           <div className="flex gap-3">
             <Link href="/signin">
