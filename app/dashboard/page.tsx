@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, TrendingUp, DollarSign, Gauge, Bell } from "lucide-react"
+import { RefreshCw, TrendingUp, DollarSign, Gauge, Bell, LogOut } from "lucide-react"
 import { SettingsDrawer } from "@/components/SettingsDrawer"
 import { useAuth } from "@/app/hooks/useAuth"
 import Link from "next/link"
@@ -138,9 +138,43 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange, enabledModels, results.length])
 
+  // Auto-refresh every 2 hours (7200000 ms)
+  useEffect(() => {
+    if (!isAuthenticated || enabledModels.length === 0) return
+
+    const AUTO_REFRESH_INTERVAL = 2 * 60 * 60 * 1000 // 2 hours in milliseconds
+
+    const intervalId = setInterval(() => {
+      console.log('Auto-refresh triggered (2-hour interval)')
+      handleRefresh()
+    }, AUTO_REFRESH_INTERVAL)
+
+    return () => clearInterval(intervalId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, enabledModels, currency])
+
   const handleSettingsChange = (settings: { enabledModels: string[]; currency: string }) => {
     setEnabledModels(settings.enabledModels)
     setCurrency(settings.currency as Currency)
+  }
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      })
+      
+      if (response.ok) {
+        // Clear local state and redirect
+        window.location.href = '/signin'
+      } else {
+        console.error('Logout failed with status:', response.status)
+        alert('Logout failed. Please try again.')
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+      alert('Logout failed. Please try again.')
+    }
   }
 
   // Format currency helper
@@ -240,6 +274,14 @@ export default function Home() {
                   >
                     <RefreshCw className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
                     {loading ? 'Testing...' : 'Refresh'}
+                  </Button>
+                  <Button 
+                    variant="ghost"
+                    onClick={handleLogout}
+                    className="border-2"
+                  >
+                    <LogOut className="mr-2 size-4" />
+                    Logout
                   </Button>
                 </div>
               </CardAction>
