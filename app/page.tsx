@@ -62,7 +62,7 @@ export default function LandingPage() {
             <Zap className="h-10 w-10 text-emerald-500 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Instant Insights</h3>
             <p className="text-slate-400">
-              Visualize trends over 24h, 7d, or 30d. Make data-driven decisions about which models to use for your workload.
+              Visualise trends over 24h, 7d, or 30d. Make data-driven decisions about which models to use for your workload.
             </p>
           </div>
         </div>
@@ -70,7 +70,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-slate-800 mt-20">
         <div className="container mx-auto px-4 py-8 text-center text-slate-500">
-          <p>&copy; 2025 Optaimi Pulse. Monitor smarter, not harder.</p>
+          <p>&copy; 2025 Optaimi. Monitor smarter, not harder.</p>
         </div>
       </footer>
     </div>

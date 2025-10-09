@@ -118,7 +118,7 @@ export default function SignUpPage() {
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-medium text-slate-200">Historical Insights</h4>
-                <p className="text-xs text-slate-400">Analyze trends over 24h, 7d, or 30d</p>
+                <p className="text-xs text-slate-400">Analyse trends over 24h, 7d, or 30d</p>
               </div>
             </div>
           </div>
