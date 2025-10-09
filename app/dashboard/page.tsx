@@ -6,9 +6,10 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, TrendingUp, DollarSign, Gauge } from "lucide-react"
+import { RefreshCw, TrendingUp, DollarSign, Gauge, Bell } from "lucide-react"
 import { SettingsDrawer } from "@/components/SettingsDrawer"
 import { useAuth } from "@/app/hooks/useAuth"
+import Link from "next/link"
 
 const PerformanceChart = dynamic(() => import("@/components/PerformanceChart"), {
   ssr: false,
@@ -221,6 +222,16 @@ export default function Home() {
               </div>
               <CardAction>
                 <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    className="border-2"
+                    asChild
+                  >
+                    <Link href="/alerts">
+                      <Bell className="mr-2 size-4" />
+                      Alerts
+                    </Link>
+                  </Button>
                   <SettingsDrawer onSettingsChange={handleSettingsChange} />
                   <Button 
                     onClick={handleRefresh} 
