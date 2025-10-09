@@ -1,18 +1,24 @@
 "use client"
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Zap, Bell, BarChart3 } from 'lucide-react'
+import { ArrowRight, Bell, BarChart3, Zap } from 'lucide-react'
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="h-6 w-6 text-emerald-500" />
-            <span className="text-xl font-bold">Optaimi is Pulse</span>
-          </div>
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/logo.png" 
+              alt="Optaimi Pulse Logo" 
+              width={180} 
+              height={50}
+              className="h-10 w-auto"
+            />
+          </Link>
           <div className="flex gap-3">
             <Link href="/signin">
               <Button variant="ghost">Sign In</Button>
